@@ -180,8 +180,8 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 | Combinação ponderada dos scores em `config/fusion.yaml` | ✅ pesos por fonte e limiares por nível (seção 6.4); pesos e limiares a validar com o grupo |
 | Três níveis com deduplicação e cooldown por paciente e tipo | ✅ cooldown por paciente e tipo de alerta, com escalonamento (seção 6.4) |
 | E-mail SMTP no alerta crítico (obrigatório), `config/alerts.yaml`, `email_sent_at`, contingência `.eml` | ✅ `app/notify.py`, um envio por alerta (seção 6.4); testado com conta Gmail real (senha de app) em 14/11 |
-| Upload de vídeo, áudio e nota no Streamlit; chamada a `analyze()` dos Integrantes 1 e 2; laço com o simulador do Integrante 3 | ⬜ |
-| Dashboard com frames do Integrante 1, transcrição e notas do Integrante 2, séries do Integrante 3 | 🟡 transcrição e série de movimentação |
+| Upload de vídeo, áudio e nota no Streamlit; chamada a `analyze()` dos Integrantes 1 e 2; laço com o simulador do Integrante 3 | 🟡 upload e análise pelo módulo dono prontos (`app/ingest.py`, seção 6.4); falta o laço com o simulador, que o Integrante 3 ainda não entregou |
+| Dashboard com frames do Integrante 1, transcrição e notas do Integrante 2, séries do Integrante 3 | ✅ abas por modalidade; a aba do Integrante 3 lê o `series_flagged.parquet` assim que ele existir |
 | Teste ponta a ponta do P001 com os módulos reais | 🟡 vídeo real + mocks de áudio, texto e anomalias |
 | Seções 1, 6 e 10 deste README, PDF consolidado a partir dele, vídeo, submissão | ⬜ |
 | Desejáveis (Integrante 4): confirmação de leitura ("Ciente"), Azure Blob Storage, Docker Compose | ⬜ |
@@ -194,8 +194,8 @@ contracts/            schema Finding, loader do patients.yaml (Integrante 4)
 modules/video/        análise de vídeo (Integrante 1): fisioterapia, leito, OpenPose, relatório, métricas
 modules/audio/        áudio e texto clínico (Integrante 2) - ainda vazio
 modules/anomaly/      anomalias e simulador (Integrante 3) - ainda vazio
-app/                  Streamlit, fusão e alertas (Integrante 4) - versão mínima
-config/               video.yaml (limiares do vídeo), fusion.yaml (regras da fusão)
+app/                  Streamlit, upload, fusão, alertas e e-mail (Integrante 4)
+config/               video.yaml (limiares do vídeo), fusion.yaml (fusão), alerts.yaml (e-mail)
 data/
   patients.yaml       pacientes sintéticos e demo_offset por artefato
   download_weights.py baixa os pesos dos modelos para weights/
@@ -450,15 +450,38 @@ alerta crítico às 10:48.
 streamlit run app/streamlit_app.py
 ```
 
-O que a versão mínima faz:
-- Carrega o `patients.yaml` e lê todos os `findings.jsonl` em `outputs/`.
+O que a aplicação faz:
+- Carrega o `patients.yaml` e lê todos os `findings.jsonl` em `outputs/`,
+  inclusive os dos arquivos enviados pela própria tela.
+- Roda a fusão de todos os pacientes, grava `outputs/alerts.jsonl` e envia o
+  e-mail do alerta crítico.
 - Mostra, por paciente:
   - os artefatos com os `demo_offset`;
-  - os alertas;
+  - os alertas, do mais grave para o menos grave, com score e deduplicados;
   - a linha do tempo multimodal e a tabela de Findings;
-  - a série de movimentação;
-  - a transcrição, com os termos críticos destacados.
-- Roda a fusão de todos os pacientes e grava `outputs/alerts.jsonl`.
+  - quatro abas por modalidade:
+
+| Aba | O que mostra | De onde vem |
+|---|---|---|
+| Vídeo (Integrante 1) | cada desvio com quadro e clipe anotados; quadros por vídeo, inclusive do leito; série de movimentação; relatório HTML para baixar | `Finding.artifacts`, `outputs/video/<paciente>/frames/`, `movement.parquet`, `report.html` |
+| Áudio e notas (Integrante 2) | transcrição e notas de evolução com os termos críticos em vermelho; comparação de cada nota com a anterior | `outputs/audio/<paciente>/transcript.json`, `outputs/text/<paciente>/notes.json` |
+| Anomalias (Integrante 3) | série escolhida com os pontos marcados como anomalia | `outputs/anomaly/<paciente>/series_flagged.parquet` (coluna de tempo `timestamp`; marcação: coluna booleana com "anom" ou "flag" no nome) |
+| Enviar arquivo | upload de vídeo, áudio ou nota e lista dos envios, com opção de remover | `app/ingest.py` |
+
+**Envio de arquivos** (`app/ingest.py`):
+- Escolha o artefato do paciente a que o arquivo corresponde: o `demo_offset`
+  dele posiciona os Findings na linha do tempo.
+- Vídeo (MP4, AVI, MOV, MKV): `modules.video.analyze()` do Integrante 1. Roda
+  o YOLOv8 localmente, então precisa dos pesos (`python -m data.download_weights`).
+- Áudio (WAV PCM 16 bits, mono, 16 kHz) e nota (TXT): o pipeline do
+  Integrante 2. Sem marcar "Autorizar chamadas ao Azure", só funcionam
+  respostas que já estão no cache.
+- Cada envio fica em `outputs/uploads/<id>/`, com a mesma estrutura das saídas
+  dos módulos, e nunca sobrescreve as saídas oficiais. Reenviar o mesmo arquivo
+  para o mesmo artefato reaproveita a pasta. Os Findings entram na fusão na hora.
+- Se o módulo falhar (pesos ausentes, WAV fora do formato, Azure não
+  autorizado), a tela mostra o erro e o envio fica registrado com ele.
+- O laço com o simulador do Integrante 3 ainda não existe.
 
 Fusão (`app/fusion.py`, parâmetros em `config/fusion.yaml`), por paciente e
 em três etapas:
@@ -542,7 +565,7 @@ E-mail do alerta crítico (`app/notify.py`, opções em `config/alerts.yaml`):
 
 Ainda não implementado (Integrante 4):
 - confirmação de leitura;
-- upload e chamada a `analyze()`;
+- laço com o simulador do Integrante 3;
 - processamento incremental (hoje o `alerts.jsonl` é reescrito a cada execução).
 
 ### 6.5 Serviços em nuvem (Azure)
@@ -1395,6 +1418,8 @@ python -m pytest
 | `test_p001_smoke.py` | cenário P001: alerta crítico pela regra, controle negativo fora da janela |
 | `test_fusion.py` | combinação ponderada dos scores (pesos, janela, limiares, precedência das regras) e deduplicação com cooldown por paciente e tipo |
 | `test_app_smoke.py` | Streamlit inicia com e sem saídas |
+| `test_dashboard.py` | abas do dashboard: quadros do vídeo, notas e termos destacados, série do Integrante 3, lista de envios |
+| `test_ingest.py` | upload: offset do artefato, chamada ao módulo dono, Findings na fusão, erros sem derrubar a tela, remoção |
 | `test_notify.py` | e-mail do alerta crítico: envio único, contingência `.eml`, falha do SMTP, senha fora dos arquivos |
 | `test_video_*.py` | geometria, regras, pipeline, CLI, OpenPose, leito, métricas e desenho dos rótulos do vídeo |
 | `test_comparacao.py` | cálculos da comparação OpenPose × YOLOv8-pose (ângulo 3D, trecho parado, variação, vista) |
