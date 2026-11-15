@@ -10,11 +10,11 @@ O paciente sintético P001 tem dados que vêm de fontes distintas, associadas s�
 para a demonstração técnica.
 
 > **Estado atual (12/11/2026):**
-> - **M1:** cumprido com mocks fictícios, exceto a decisão sobre a fonte das prescrições (Integrante 3).
+> - **M1:** cumprido com mocks fictícios.
 > - **Vídeo (Integrante 1):** módulo implementado e rodando com vídeos reais de datasets públicos: REHAB24-6 na fisioterapia e Charades no leito. O grupo decidiu não gravar vídeos próprios.
 > - **Peças provisórias:** contrato, `patients.yaml`, Streamlit e fusão foram feitos pelo Integrante 1 para destravar o trabalho; o dono é o Integrante 4.
 > - **Áudio/texto (Integrante 2):** módulo implementado em Python 3.13 e validado com Azure real, seis consultas sintéticas, baseline do mesmo locutor e revisão humana.
-> - **Anomalias (Integrante 3):** existem só como mocks.
+> - **Anomalias (Integrante 3):** módulo implementado com dados sintéticos (vitais e prescrições) e o `movement.parquet` real do vídeo, validado com 505 pacientes simulados.
 >
 > Detalhes em [Status por integrante](#3-status-por-integrante).
 
@@ -113,7 +113,7 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 | `patients.yaml` carrega com os `demo_offset` | ✅ |
 | Todos os mocks passam na validação Pydantic | ✅ (`tests/test_mocks_schema.py`) |
 | Um Finding de cada origem, incluindo `text`, aparece na linha do tempo | ✅ (`tests/test_app_smoke.py`) |
-| A fonte das prescrições está decidida | ⬜ (Integrante 3) |
+| A fonte das prescrições está decidida | ✅ sintética, gerada pelo simulador (seção 9.2) |
 
 ### Integrante 1: vídeo
 
@@ -160,12 +160,12 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 
 | Item | Status |
 |---|---|
-| Mock: dessaturação, dose duplicada, saída do leito | ✅ (provisório, feito pelo Integrante 1) |
-| Baixar MIMIC-IV Demo e/ou BIDMC (PhysioNet) e decidir a fonte das prescrições | ⬜ (critério do M1) |
-| Simulador em fluxo (`config/simulator.yaml`) | ⬜ |
-| Detectores com `update(ponto) -> list[Finding]`: vitais, prescrições, movimentação | ⬜ |
-| Série de movimentação estendida a partir do `movement.parquet` real (Charades SSP8C) | ⬜ |
-| Anomalias injetadas, métricas, `series_flagged.parquet`, gráficos e seção 9 deste README | ⬜ |
+| Mock: dessaturação, dose duplicada, saída do leito | ✅ (provisório, feito pelo Integrante 1; substituído pelas saídas reais) |
+| Decidir a fonte das prescrições (critério do M1) | ✅ sintética, gerada pelo simulador; MIMIC-IV Demo e BIDMC não foram usados (seção 9.2) |
+| Simulador em fluxo (`config/simulator.yaml`) | ✅ |
+| Detectores com `update(ponto) -> list[Finding]`: vitais, prescrições, movimentação | ✅ |
+| Série de movimentação estendida a partir do `movement.parquet` real (Charades SSP8C) | ✅ |
+| Anomalias injetadas, métricas, `series_flagged.parquet`, gráficos e seção 9 deste README | ✅ |
 | Desejável (Integrante 3): NEWS2 | ⬜ |
 
 ### Integrante 4: integração
@@ -193,9 +193,9 @@ contracts/            schema Finding, loader do patients.yaml (Integrante 4)
   fixtures/           um Finding de exemplo por origem
 modules/video/        análise de vídeo (Integrante 1): fisioterapia, leito, OpenPose, relatório, métricas
 modules/audio/        áudio e texto clínico (Integrante 2) - ainda vazio
-modules/anomaly/      anomalias e simulador (Integrante 3) - ainda vazio
+modules/anomaly/      anomalias e simulador (Integrante 3): vitais, prescrições, movimentação, avaliação
 app/                  Streamlit, fusão e alertas (Integrante 4) - versão mínima
-config/               video.yaml (limiares do vídeo), fusion.yaml (regras da fusão)
+config/               video.yaml (limiares do vídeo), fusion.yaml (regras da fusão), anomaly.yaml, simulator.yaml e avaliacao.yaml (anomalias)
 data/
   patients.yaml       pacientes sintéticos e demo_offset por artefato
   download_weights.py baixa os pesos dos modelos para weights/
@@ -210,7 +210,7 @@ scripts/material_video.py figuras do README e pacote do vídeo para o Integrante
 notebooks/rehab24/    avaliação e calibração do vídeo no REHAB24-6 (config da abdução, scripts)
 notebooks/charades/   conferência da série do leito com a anotação do Charades
 notebooks/comparacao/ comparação OpenPose × YOLOv8-pose com o gabarito do REHAB24-6
-docs/                 enunciado oficial (PDF) e figuras do README (img/video/)
+docs/                 enunciado oficial (PDF), figuras do README (img/video/, img/anomalias/) e 05-anomalias.md
 tests/                pytest
 outputs/              saídas geradas (fora do Git)
 weights/              pesos dos modelos (fora do Git)
@@ -272,7 +272,7 @@ Vídeos (REHAB24-6, Charades) ──► Integrante 1 · Vídeo ─────�
                                   pose, YOLOv8, OpenPose                   │
                                         │ movement.parquet                 │
                                         ▼                                  ▼
-PhysioNet (vitais, prescrições) ──► Integrante 3 · Anomalias ── Findings ──► Integrante 4 · Integração ──► Equipe médica
+Simulador (vitais, prescrições) ──► Integrante 3 · Anomalias ── Findings ──► Integrante 4 · Integração ──► Equipe médica
                                   detectores + simulador                   ▲   contrato, fusão tardia,     dashboard,
                                                                            │   alertas, dashboard          alerts.jsonl,
 Áudios e notas de evolução ─────► Integrante 2 · Áudio e texto ─ Findings ─┘                               e-mail (crítico)
@@ -322,9 +322,9 @@ Funções úteis: `read_findings(path)`, `write_findings(path, findings)`.
 | `video` | `amplitude_incompleta`, `postura_fora_padrao` | Integrante 1 |
 | `audio` | `termo_critico`, `indicador_vocal_alterado` | Integrante 2 |
 | `text` | `termo_critico` | Integrante 2 |
-| `vitals` | `dessaturacao` | Integrante 3 |
-| `prescription` | `dose_duplicada` | Integrante 3 |
-| `movement` | `saida_do_leito` | Integrante 3 |
+| `vitals` | `dessaturacao`, `taquicardia`, `bradicardia`, `taquipneia`, `bradipneia`, `hipotensao`, `hipertensao`, `hipotensao_diastolica`, `hipertensao_diastolica`, `febre`, `hipotermia`, `desvio_<sinal>`, `padrao_multivariado` | Integrante 3 |
+| `prescription` | `dose_fora_da_faixa`, `dose_duplicada`, `aumento_abrupto_dose`, `suspensao_abrupta` | Integrante 3 |
+| `movement` | `saida_do_leito`, `imobilidade_prolongada` | Integrante 3 |
 
 Para termos críticos, a fusão lê o termo em `evidence.term`.
 
@@ -392,12 +392,12 @@ Mapeia os passos do cenário P001 do plano.
 | Horário | Origem | Evento | Severidade (score) | Fonte hoje | Passo do cenário |
 |---|---|---|---|---|---|
 | 10:00:26–10:01:48 | `video` | 9 `amplitude_incompleta` e 7 `postura_fora_padrao` (seção 7.12) | low a high | **real** (REHAB24-6 PM_105) | 1 |
-| 10:10:18–10:10:24 | `movement` | `saida_do_leito` | medium (0,70) | mock do Integrante 3, alinhado à série real do leito | 2 |
-| 10:20:00 | `prescription` | `dose_duplicada` (dipirona 1000 mg, 2×) | medium (0,70) | mock | 5 |
+| 10:10:18 | `movement` | `saida_do_leito` | medium (0,70) | **real** (Integrante 3), sobre a série real do leito | 2 |
+| 10:20:00 | `prescription` | `dose_duplicada` (dipirona 1000 mg, 2×) | high (0,75) | **real** (Integrante 3, dado sintético) | 5 |
 | 10:30:30–10:31:30 | `audio` | `indicador_vocal_alterado` (z-scores em `evidence.zscores`) | medium (0,68) | mock | 3 |
 | 10:31:15–10:31:19 | `audio` | `termo_critico` "falta de ar" | medium (0,80) | mock | 3 |
 | 10:40:00 | `text` | `termo_critico` "dispneia aos esforços" (ausente na nota anterior) | medium (0,75) | mock | 4 |
-| 10:45:00–10:48:00 | `vitals` | `dessaturacao` (SpO2 87%, esperado 94–100%) | high (0,90) | mock | 5 |
+| 10:45:20–10:45:50 | `vitals` | `dessaturacao` (SpO2 87%, limite 90%) | high (0,87) | **real** (Integrante 3, dado sintético) | 5 |
 
 Os Findings da regra crítica (indicador vocal, termo respiratório e queda de
 SpO2) ficam entre 10:30 e 10:45, dentro da janela de 30 min. A fusão emite o
@@ -1265,51 +1265,92 @@ hospitalar. Procedimento, denominadores e reprodução estão no capítulo técn
 
 ## 9. Detecção de anomalias (Integrante 3)
 
-> **A preencher pelo Integrante 3.** Hoje só existem os mocks (seção 6.3).
-> Conteúdo mínimo previsto no plano:
-> - métodos por fonte;
-> - simulador;
-> - composição da série de movimento;
-> - anomalias injetadas;
-> - gráficos.
+**Implementado e validado com dados sintéticos.** O módulo está em
+`modules/anomaly/`, com configuração em `config/anomaly.yaml`,
+`config/simulator.yaml` e `config/avaliacao.yaml`. Os métodos, os limiares, o
+simulador e a avaliação estão detalhados em
+[docs/05-anomalias.md](docs/05-anomalias.md).
+
+Os modelos rodam localmente: o Azure AI Anomaly Detector foi aposentado em
+1º/10/2026. Os limiares são didáticos e não são critério clínico validado.
 
 ### 9.1 Métodos por fonte
 
-Os modelos rodam localmente: o Azure AI Anomaly Detector foi aposentado em
-1º/10/2026. Métodos previstos no plano:
-
-| Fonte | Método do MVP | Desejável ou futuro |
+| Fonte | Método | Onde |
 |---|---|---|
-| Sinais vitais (FC, PA, SpO2, FR) | Janela móvel com z-score robusto + Isolation Forest | NEWS2 como regra clínica (desejável); autoencoder LSTM (trabalho futuro) |
-| Prescrições | Regras: dose fora da faixa, aumento acima de X% entre dias, duplicidade, suspensão abrupta | Isolation Forest como segunda opinião |
-| Movimentação | Regras sobre o `movement.parquet` do Integrante 1: imobilidade prolongada, saída do leito. O Integrante 3 é o único emissor desses dois eventos | Agitação noturna |
+| Sinais vitais (FC, SpO2, FR, PAS, PAD, temperatura) | Limites clínicos, z-score robusto (mediana e MAD numa janela de 15 min) e Isolation Forest sobre os seis sinais juntos | `vitals.py`, `zscore.py`, `multivariado.py` |
+| Prescrições | Regras: dose fora da faixa, dose duplicada, aumento abrupto da dose e suspensão abrupta | `prescription.py` |
+| Movimentação | Regras sobre o `movement.parquet` do Integrante 1: saída do leito e imobilidade prolongada | `movement.py` |
 
-> **A preencher:**
-> - fonte dos dados (MIMIC-IV Demo e/ou BIDMC, do PhysioNet);
-> - fonte das prescrições, que é critério do M1;
-> - limiares de cada detector.
+Um desvio só vira Finding depois de durar um tempo mínimo (30 s com limite
+clínico, 90 s só com desvio estatístico), o que filtra artefato de sensor. Cada
+episódio gera um Finding quando é confirmado e outro se a severidade piorar
+(`evidence.evento` = `confirmado` ou `escalonado`, mesmo `evidence.episodio_id`).
 
-### 9.2 Simulador e série de movimentação estendida
+### 9.2 Fonte dos dados e simulador
 
-> **A preencher:**
-> - simulador que reproduz vitais, prescrições e movimentação em tempo acelerado, entregando ponto a ponto ao `update()` dos detectores (`config/simulator.yaml`);
-> - composição documentada da série estendida.
+Sinais vitais e prescrições são **sintéticos**, gerados pelo simulador
+(`simulator.py`, `config/simulator.yaml`). Cada sinal vital é um valor basal mais
+uma oscilação lenta e um ruído AR(1), e o basal varia de paciente para
+paciente. O catálogo de medicamentos do `config/anomaly.yaml` é didático, não vem
+de bula. Não usei MIMIC-IV Demo nem BIDMC.
 
-Entrada disponível do Integrante 1:
-- `outputs/video/P001/movement.parquet`: série real de 30 s do vídeo Charades SSP8C, com a pessoa deitada e depois saindo do leito.
-- `bed_exit_labels.json`: saída do leito aos 19,1 s, da anotação humana do Charades.
+A movimentação usa o `movement.parquet` real do Integrante 1 (Charades SSP8C).
+Como o clipe tem 30 s, ele é estendido com a série simulada (o paciente deitado
+que se reposiciona de tempos em tempos), e a composição fica registrada em
+`outputs/anomaly/<paciente>/composicao_movimento.json`. Sem `--input`, a
+movimentação é toda simulada.
 
-O trecho "parado no leito" vai de 0 a ~11 s. A saída estável aparece aos 18,0 s,
-e o detector deve exigir alguns segundos fora do leito antes de sinalizar,
-porque `in_bed` oscila (seção 7.8).
+O `fluxo.py` reproduz a série em velocidade ajustável, entregando um ponto de
+cada vez ao `update()` dos detectores.
 
 ### 9.3 Anomalias injetadas, métricas e gráficos
 
-> **A preencher:**
-> - anomalias sintéticas documentadas (queda de SpO2, pico de FC, dose 10×) injetadas em séries normais;
-> - precisão, recall e atraso de detecção;
-> - na movimentação, métricas contra os rótulos de saída do leito;
-> - gráficos com as anomalias marcadas, também em `outputs/anomaly/<paciente>/series_flagged.parquet`.
+Anomalias injetadas: dessaturação, taquicardia, hipotensão, febre, taquipneia e
+deterioração multivariada nos vitais; dose fora da faixa, dose duplicada, aumento
+abrupto e suspensão abrupta nas prescrições; saída do leito e imobilidade
+prolongada na movimentação. Também há distratores que não devem ser sinalizados
+(pico de sensor, perda de sinal e leitura inválida).
+
+```powershell
+python -m modules.anomaly.avaliacao     # 505 pacientes simulados, grava outputs/anomaly/avaliacao/
+python -m modules.anomaly.graficos      # gráficos de exemplo com as anomalias marcadas
+```
+
+Resultados com 505 pacientes simulados (sementes diferentes das usadas para
+calibrar os limiares):
+
+| Módulo | Eventos achados | Precisão (IC 95 %) | Atraso mediano |
+|---|---|---|---|
+| Vitais: limites + z-score | 72/80 (90,0 %) | 98,2 % (94 a 99) | 60 s |
+| Vitais: tudo junto | 73/80 (91,2 %) | 98,3 % (94 a 100) | 60 s |
+| Vitais: só Isolation Forest | 7/80 (8,8 %) | 100 % (9 Findings) | 4,3 min |
+| Prescrições | 153/153 | 100 % | 0 s |
+| Movimentação | 92/92 | 100 % | 3 s |
+
+As métricas foram calculadas sobre uma amostra pequena, roteirizada e destinada
+à validação técnica do protótipo; não representam validação clínica nem
+desempenho esperado em ambiente hospitalar real. Como os mesmos dados sintéticos
+geram os eventos e medem a detecção, as regras de prescrição e movimentação
+acertam 100 % por construção. O ponto fraco é a deterioração multivariada (9 de
+16 eventos), e o Isolation Forest tem cerca de 5 % de falso alarme em paciente
+estável, por isso ele é só um complemento.
+
+No clipe real do leito (Charades SSP8C), o detector marcou a saída do leito aos
+18,0 s do vídeo (10:10:18 na demo). A anotação humana do Charades marca o fim de
+"levantando-se" aos 19,1 s, e o `in_bed` do Integrante 1 fica falso de forma
+estável a partir de 18,0 s. Um quadro falso de `in_bed` aos 11,8 s, com a pessoa
+ainda deitada, é ignorado porque a saída só é confirmada com 3 s seguidos fora do
+leito.
+
+![Precisão, recall e F1 por módulo](docs/img/anomalias/metricas_por_modulo.png)
+
+![Atraso de detecção por tipo de evento](docs/img/anomalias/atraso_deteccao.png)
+
+![Exemplo de vitais com a anomalia marcada](docs/img/anomalias/exemplo_vitais.png)
+
+As séries com as anomalias marcadas também ficam em
+`outputs/anomaly/<paciente>/series_flagged.parquet`.
 
 ### 9.4 Saídas e interface
 
@@ -1317,7 +1358,50 @@ porque `in_bed` oscila (seção 7.8).
 |---|---|---|
 | Integrante 4 | Simulador e detectores importáveis, com estado | `modules/anomaly/{simulator,vitals,prescription,movement}.py` |
 | Integrante 4 | Findings `source: vitals`, `prescription`, `movement` | `outputs/anomaly/<paciente>/findings.jsonl` + `update()` em fluxo |
-| Integrante 4 (dashboard) | Séries com anomalias marcadas | `outputs/anomaly/<paciente>/series_flagged.parquet` |
+| Integrante 4 (dashboard) | Séries com anomalias marcadas | `outputs/anomaly/<paciente>/series_flagged.parquet` (formato longo: `patient_id`, `timestamp`, `source`, `signal`, `value`, `flagged`, `finding_id`, `severity`) |
+
+```powershell
+python -m modules.anomaly.run --patient P001
+python -m modules.anomaly.run --input outputs/video/P001/movement.parquet --patient P001 --out outputs/anomaly/P001/findings.jsonl
+```
+
+Interface Python: `from modules.anomaly.pipeline import analyze`, seguida de
+`analyze(input, patient_id) -> list[Finding]`.
+
+Depois de rodar o módulo real, regenere os outros mocks sem apagar a saída dele:
+`python -m scripts.make_mocks --skip i3`.
+
+### 9.5 Como rodar
+
+Pré-requisito: instalação da seção 5. Para usar a movimentação real do leito, gere
+antes o `movement.parquet` (seção 7.3, bloco do Integrante 3). Sem ele, a
+movimentação é toda simulada.
+
+```powershell
+# 1. Findings do paciente (vitais, prescrições e movimentação)
+python -m modules.anomaly.run --patient P001
+python -m modules.anomaly.run --input outputs/video/P001/movement.parquet --patient P001
+# grava findings.jsonl e series_flagged.parquet em outputs/anomaly/P001/ (com --input também a composicao_movimento.json)
+
+# 2. Reprodução em fluxo, ponto a ponto (1 s real = 120 s da série)
+python -m modules.anomaly.fluxo --paciente P001 --velocidade 120
+
+# 3. Avaliação e gráficos
+python -m modules.anomaly.avaliacao --rapido     # versão pequena, só para conferir se roda
+python -m modules.anomaly.avaliacao              # completa: 505 pacientes simulados, alguns minutos
+python -m modules.anomaly.graficos               # gráficos de exemplo em outputs/anomaly/graficos/
+
+# 4. Gráfico dos vitais simulados de um cenário
+python -m modules.anomaly.simulator --cenario p001_integrado --grafico outputs/anomaly/vitais.png
+
+# 5. Testes
+python -m pytest
+```
+
+- `--cenario` no `run` troca o cenário do `config/simulator.yaml` (o padrão é o do paciente em `pacientes:`).
+- Na avaliação, `--processos N` define quantos processos usar, `--out` troca a pasta de saída e `--sem-graficos` pula os gráficos.
+- Pacientes que não estão em `pacientes:` rodam a série estável, sem anomalias.
+- Limiares, catálogo de medicamentos e cenários ficam em `config/anomaly.yaml` e `config/simulator.yaml`, sem precisar mexer no código.
 
 ## 10. Resultados integrados, limitações e ética (Integrante 4, com todos)
 
@@ -1337,10 +1421,10 @@ emite o alerta crítico e o e-mail. Estado de cada passo:
 | Passo | O que acontece | Estado |
 |---|---|---|
 | 1. Vídeo de fisioterapia (Integrante 1) | Amplitude incompleta → Finding `video` de severidade média | **real**: REHAB24-6 PM_105, repetição 12 às 10:01:02 (seção 7.12) |
-| 2. Vídeo do leito (Integrante 1 → Integrante 3) | `movement.parquet` → simulador → saída do leito, Finding `movement` | parquet **real** (Charades SSP8C); Finding ainda é mock, às 10:10:18 |
+| 2. Vídeo do leito (Integrante 1 → Integrante 3) | `movement.parquet` → simulador → saída do leito, Finding `movement` | parquet e Finding **reais** (Charades SSP8C), às 10:10:18 (seção 9.3) |
 | 3. Consulta gravada (Integrante 2) | "falta de ar" e indicador vocal alterado → dois Findings `audio` | mock |
 | 4. Nota de evolução (Integrante 2) | "dispneia aos esforços" na nota recente → Finding `text` | mock |
-| 5. Vitais e prescrição (Integrante 3) | Queda de SpO2 → Finding `vitals` (alta); dose anômala → Finding `prescription` | mock |
+| 5. Vitais e prescrição (Integrante 3) | Queda de SpO2 → Finding `vitals` (alta); dose anômala → Finding `prescription` | **real**, com dados sintéticos do simulador |
 | 6. Fusão (Integrante 4) | Regra explícita na janela de 30 min → alerta crítico | ✅ alerta crítico às 10:48 (seção 6.4) |
 | 7. Alerta à equipe (Integrante 4) | E-mail chegando; "Ciente" se estável | 🟡 e-mail implementado e testado com conta real em 14/11, com contingência `.eml`; falta o "Ciente" |
 
@@ -1359,7 +1443,7 @@ desempenho esperado em ambiente hospitalar real.
 | Vídeo | OpenPose × YOLOv8-pose contra o gabarito 2D (erro médio) | 46,0 px × 39,7 px; 0,77 × 59,3 FPS | seção 7.7 |
 | Vídeo | Erro do ângulo do joelho × 3D real, de perfil (OpenPose × YOLOv8-pose) | 8,8° × 11,8° | seção 7.7 |
 | Áudio e texto | WER; termos críticos; concordância do indicador | 0,23%; P/R/F1 100% nos 6 termos; 100% em 6/6 gravações | seção 8.6 |
-| Anomalias | Precisão, recall e atraso de detecção | A preencher | seção 9.3 |
+| Anomalias | Recall e precisão dos vitais (limites + z-score); prescrições; movimentação | 90,0 % e 98,2 %; 100 % e 100 % (regras, por construção em dados sintéticos); saída do leito do SSP8C aos 18,0 s, com a anotação em 19,1 s | seção 9.3 |
 
 ### 10.3 Limitações
 
@@ -1398,6 +1482,7 @@ python -m pytest
 | `test_notify.py` | e-mail do alerta crítico: envio único, contingência `.eml`, falha do SMTP, senha fora dos arquivos |
 | `test_video_*.py` | geometria, regras, pipeline, CLI, OpenPose, leito, métricas e desenho dos rótulos do vídeo |
 | `test_comparacao.py` | cálculos da comparação OpenPose × YOLOv8-pose (ângulo 3D, trecho parado, variação, vista) |
+| `test_anomaly_*.py` | configuração, simulador, injeções, z-score, episódios, vitais, Isolation Forest, prescrições, movimentação, pipeline e avaliação |
 
 **O que os testes de vídeo usam**
 - **Vídeos sintéticos** gerados em pasta temporária, nunca dados da demo. Exercitam as regras e a entrada e saída de arquivos sem depender de modelo nem de dataset.
