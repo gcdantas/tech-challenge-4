@@ -1526,6 +1526,34 @@ fontes (`tests/test_integracao_i3.py`; confira as suas saídas com
 | Crítico | 10:45:50 | regra `respiratorio_vocal_spo2` | 0,84 | indicador vocal, "falta de ar", dessaturação (+ o termo da nota, deduplicado) |
 | Urgente | 10:20:00 | `ponderado` | 0,70 | desvios da fisioterapia, saída do leito, dose duplicada |
 
+#### Teste ponta a ponta com saídas reais (15/11/2026)
+
+`python -m scripts.e2e_p001` sobre as saídas geradas numa mesma máquina:
+
+| Fonte | Origem | Findings |
+|---|---|---|
+| `video` | **real**: `modules.video.run` no REHAB24-6 PM_105 | 16 (9 amplitude incompleta, 7 postura fora da faixa) |
+| `movement` | **real**: `movement.parquet` do SSP8C → detector do I3 | 1 saída do leito (10:10:18) |
+| `vitals`, `prescription` | **real**: simulador e detectores do I3 | 1 dessaturação (10:45:20), 1 dose duplicada (10:20) |
+| `audio`, `text` | **mock marcado** do I2 (`--mock`), sem chaves do Azure nessa máquina | 2 e 3 |
+
+| Nível | Horário | Tipo | Score | Findings |
+|---|---|---|---|---|
+| Urgente | 10:20:00 | `ponderado` | 0,70 | 18: os 16 desvios da fisioterapia, a saída do leito e a dose duplicada |
+| Urgente | 10:45:50 | `ponderado` | 0,88 | 6: termo crítico da consulta, termos da nota e a dessaturação |
+
+Os 24 Findings viraram **2 alertas**, e não 24. **O alerta crítico não
+aparece** nessa execução: o mock do I2 não tem som para medir e, por isso, não
+gera o indicador vocal, uma das três condições da regra. Com o áudio real
+processado no Azure, que gera o indicador, a regra fecha como no teste com os
+mocks do M1 (acima). O resultado com as saídas reais dos quatro módulos deve ser
+registrado aqui antes da entrega.
+
+Esse teste também revelou um defeito, já corrigido: a deduplicação juntava dois
+alertas `ponderado` sem relação (vídeo + leito às 10:20 e áudio + SpO2 às 10:45)
+só por terem o mesmo nome. Agora um `ponderado` só é absorvido pelo anterior se
+não trouxer nenhum par fonte/tipo novo (`tests/test_fusion.py`).
+
 **Controle negativo.** Se a dessaturação for deslocada para fora da janela de
 30 min, a regra não dispara e não há alerta crítico
 (`tests/test_p001_smoke.py`). O alerta depende da coincidência das fontes, e
@@ -1563,8 +1591,8 @@ desempenho esperado em ambiente hospitalar real.
 | Áudio e texto | WER; termos críticos; concordância do indicador | 0,23%; P/R/F1 100% nos 6 termos; 100% em 6/6 gravações | seção 8.6 |
 | Anomalias | Recall e precisão dos vitais (limites + z-score); prescrições; movimentação | 90,0 % e 98,2 %; 100 % e 100 % (regras, por construção em dados sintéticos); saída do leito do SSP8C aos 18,0 s, com a anotação em 19,1 s | seção 9.3 |
 | Integração | Cenário P001: alerta crítico pela regra; controle negativo | 1 alerta crítico na janela; 0 fora dela | seção 10.1 |
-| Integração | Alertas do P001 com e sem deduplicação e combinação ponderada | 2 alertas emitidos, contra 1 por Finding sem eles | seção 6.4 |
-| Integração | Testes automatizados (todos os módulos) | 344 passam; 6 pulados sem os pesos de vídeo | seção 11 |
+| Integração | Alertas do P001 com saídas reais (vídeo e anomalias) e mock marcado do I2 | 24 Findings → 2 alertas (sem a fusão seriam 24) | seção 10.1 |
+| Integração | Testes automatizados (todos os módulos) | 353 passam; 3 do OpenPose falham só quando a pasta do projeto tem acento (limitação do OpenCV no Windows) | seção 11 |
 
 ### 10.3 Limitações
 
