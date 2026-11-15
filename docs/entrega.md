@@ -5,8 +5,12 @@ técnico; e um vídeo de até 15 minutos no YouTube ou Vimeo (público ou não
 listado) mostrando:
 1. exemplo prático da análise de áudio e vídeo;
 2. detecção e resposta a anomalias;
-3. integração dos serviços Azure;
+3. integração dos serviços Azure (opcional desde 15/11: o professor liberou ferramentas open source);
 4. fluxo final do alerta à equipe médica.
+
+O grupo mantém o Azure no bloco do I2, porque já está implementado. Se a
+gravação com o Azure falhar, mostre o cache das respostas ou o modo mock
+marcado e diga que o Azure é opcional nesta fase.
 
 ## Roteiro do vídeo (até 15 min)
 
