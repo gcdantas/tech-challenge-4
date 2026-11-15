@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
-from app.dashboard import highlight_terms, note_changes, series_layout
+from app.dashboard import highlight_terms, note_changes, series_layout, series_long
 from app.loaders import load_anomaly_series, load_findings, resolve_artifact, video_frame_dirs, video_media
 from contracts.finding import read_findings, write_findings
 
@@ -59,6 +59,36 @@ def test_series_layout_reconhece_tempo_valores_e_marcas():
         }
     )
     assert series_layout(df) == ("timestamp", ["spo2", "fc"], ["is_anomaly"])
+
+
+def _long_series(n_flag: int) -> pd.DataFrame:
+    """series_flagged.parquet no formato longo do Integrante 3 (docs/05-anomalias.md, 9.3)."""
+    t = pd.date_range("2026-11-03 10:30", periods=20, freq="10s", tz="-03:00")
+    spo2 = np.r_[np.full(20 - n_flag, 97.0), np.full(n_flag, 87.0)]
+    flag = [False] * (20 - n_flag) + [True] * n_flag
+    rows = pd.DataFrame(
+        {"patient_id": "P001", "timestamp": t, "source": "vitals", "signal": "spo2", "value": spo2,
+         "flagged": flag, "finding_id": [("f1" if x else None) for x in flag],
+         "severity": [("high" if x else None) for x in flag]}
+    )
+    fc = rows.assign(signal="fc", value=80.0, flagged=False, finding_id=None, severity=None)
+    return pd.concat([fc, rows], ignore_index=True)
+
+
+def test_series_long_formato_do_integrante_3():
+    long = series_long(_long_series(n_flag=3))
+    assert list(dict.fromkeys(long["serie"])) == ["vitals · fc", "vitals · spo2"]
+    assert int(long["flagged"].sum()) == 3
+    assert set(long.loc[long["flagged"], "severity"]) == {"high"}
+
+
+def test_series_long_aceita_formato_largo_e_recusa_desconhecido():
+    wide = pd.DataFrame(
+        {"timestamp": pd.date_range("2026-11-03 10:00", periods=2, freq="min"), "spo2": [97, 88], "is_anomaly": [False, True]}
+    )
+    long = series_long(wide)
+    assert list(long["serie"]) == ["spo2", "spo2"] and list(long["flagged"]) == [False, True]
+    assert series_long(pd.DataFrame({"x": ["a"]})) is None
 
 
 def test_resumo_da_comparacao_das_notas():
@@ -137,14 +167,7 @@ def test_abas_com_video_notas_e_series(mocks_dir, tmp_path, monkeypatch):
         encoding="utf-8",
     )
     adir = out / "anomaly" / "P001"
-    n = 20
-    pd.DataFrame(
-        {
-            "timestamp": pd.date_range("2026-11-03 10:30", periods=n, freq="min", tz="-03:00"),
-            "spo2": np.r_[np.full(15, 97), np.full(5, 87)],
-            "is_anomaly": [False] * 15 + [True] * 5,
-        }
-    ).to_parquet(adir / "series_flagged.parquet")
+    _long_series(n_flag=5).to_parquet(adir / "series_flagged.parquet")
 
     monkeypatch.setenv("TC_OUTPUTS_DIR", str(out))
     at = AppTest.from_file(APP, default_timeout=60).run()

@@ -26,7 +26,7 @@ import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
 
-from app.dashboard import highlight_terms, md_escape, note_changes, series_layout  # noqa: E402
+from app.dashboard import highlight_terms, md_escape, note_changes, series_long  # noqa: E402
 from app.fusion import fuse, load_fusion_config, write_alerts  # noqa: E402
 from app.ingest import (  # noqa: E402
     KIND_LABEL,
@@ -263,23 +263,31 @@ with tab_anom:
             "na linha do tempo."
         )
     else:
-        time_col, numeric, flags = series_layout(series)
-        if time_col is None or not numeric:
+        long = series_long(series)
+        if long is None or long.empty:
             st.warning("Formato do series_flagged.parquet não reconhecido; mostrando a tabela.")
             st.dataframe(series, hide_index=True)
         else:
-            ser = series.assign(**{time_col: pd.to_datetime(series[time_col], utc=True)})
-            metric = st.selectbox("Série", numeric, key="anom_metric")
-            base = alt.Chart(ser).encode(x=alt.X(f"{time_col}:T", title="Horário"))
-            layers = [base.mark_line().encode(y=alt.Y(f"{metric}:Q", title=metric))]
-            if flags:
-                marked = ser[ser[flags].any(axis=1)]
+            long = long.assign(timestamp=pd.to_datetime(long["timestamp"], utc=True))
+            names = list(dict.fromkeys(long["serie"]))
+            # Começa pela série com mais pontos marcados (no P001, a SpO2).
+            counts = long.groupby("serie")["flagged"].sum()
+            default = names.index(counts.idxmax()) if counts.max() > 0 else 0
+            serie = st.selectbox("Série", names, index=default, key="anom_metric")
+            ser = long[long["serie"] == serie]
+            layers = [
+                alt.Chart(ser)
+                .mark_line()
+                .encode(x=alt.X("timestamp:T", title="Horário"), y=alt.Y("value:Q", title=serie, scale=alt.Scale(zero=False)))
+            ]
+            marked = ser[ser["flagged"]]
+            if not marked.empty:
                 layers.append(
                     alt.Chart(marked)
                     .mark_point(color="#c0392b", size=60, filled=True)
-                    .encode(x=f"{time_col}:T", y=f"{metric}:Q", tooltip=[time_col, metric, *flags])
+                    .encode(x="timestamp:T", y="value:Q", tooltip=["timestamp:T", "value:Q", "severity:N"])
                 )
-                st.caption(f"{len(marked)} ponto(s) marcado(s) como anomalia ({', '.join(flags)}).")
+            st.caption(f"{len(marked)} ponto(s) marcado(s) como anomalia nesta série.")
             st.altair_chart(alt.layer(*layers).properties(height=280), width="stretch")
 
 with tab_upload:
