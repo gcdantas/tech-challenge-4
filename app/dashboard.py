@@ -62,6 +62,38 @@ def series_layout(df: pd.DataFrame) -> tuple[str | None, list[str], list[str]]:
     return time_col, numeric, flags
 
 
+LONG_COLUMNS = {"timestamp", "signal", "value", "flagged"}
+
+
+def series_long(df: pd.DataFrame) -> pd.DataFrame | None:
+    """Séries do I3 em formato longo: ``timestamp, serie, value, flagged, severity``.
+
+    Aceita o formato do Integrante 3 (longo: ``source``, ``signal``, ``value``,
+    ``flagged``, ``severity``...) e, por tolerância, um formato largo (uma
+    coluna por sinal e colunas booleanas de marcação). ``None`` se não reconhecer.
+    """
+    if LONG_COLUMNS <= set(df.columns):
+        out = pd.DataFrame(
+            {
+                "timestamp": df["timestamp"],
+                "serie": (df["source"].astype(str) + " · " if "source" in df.columns else "") + df["signal"].astype(str),
+                "value": pd.to_numeric(df["value"], errors="coerce"),
+                "flagged": df["flagged"].fillna(False).astype(bool),
+                "severity": df["severity"] if "severity" in df.columns else None,
+            }
+        )
+        return out.dropna(subset=["value"])
+    time_col, numeric, flags = series_layout(df)
+    if time_col is None or not numeric:
+        return None
+    flagged = df[flags].any(axis=1) if flags else pd.Series(False, index=df.index)
+    parts = [
+        pd.DataFrame({"timestamp": df[time_col], "serie": c, "value": df[c], "flagged": flagged, "severity": None})
+        for c in numeric
+    ]
+    return pd.concat(parts, ignore_index=True)
+
+
 def note_changes(note: dict[str, Any]) -> str:
     """Resumo da comparação com a nota anterior feita pelo I2."""
     c = note.get("comparison") or {}
