@@ -1,0 +1,134 @@
+# Limiares DIDÁTICOS, usados só para demonstrar o sistema. Não são critério
+# clínico validado: o sistema sinaliza risco e a decisão é da equipe médica.
+#
+# Como ler os limites de cada sinal:
+#   baixo: sinaliza quando o valor fica ABAIXO ou igual ao limite
+#   alto:  sinaliza quando o valor fica ACIMA ou igual ao limite
+#   faixa_fisica: leitura fora dela é erro de sensor e vai ser descartada
+#
+# As chaves medium, high e critical são as severidades do contrato Finding.
+
+vitais:
+  # Um desvio só vira Finding depois de durar um tempo mínimo. É o que filtra o
+  # artefato de sensor (a queda de SpO2 de 30 s do simulador não passa).
+  duracao_min_s: 30                # com limite clínico ultrapassado
+  duracao_min_estatistico_s: 90    # só desvio estatístico (z-score)
+  recuperacao_s: 30                # tempo normal seguido para encerrar o episódio
+  lacuna_max_s: 60                 # sem leitura por mais que isso, o episódio do sinal é encerrado
+
+  # Quando um sinal já tem episódio clínico confirmado, os desvios só
+  # estatísticos dos outros sinais não geram Finding próprio (ex.: a FC sobe
+  # junto com a dessaturação, é o mesmo evento clínico).
+  suprimir_correlatos: true
+
+  sinais: 
+    fc:
+      nome: frequência cardíaca
+      unidade: bpm
+      faixa_fisica: [20, 250]
+      baixo: {medium: 50, high: 40, critical: 30}
+      alto: {medium: 110, high: 130, critical: 150}
+    spo2:
+      nome: saturação de oxigênio
+      unidade: "%"
+      faixa_fisica: [50, 100]
+      baixo: {medium: 94, high: 90, critical: 85}
+    fr:
+      nome: frequência respiratória
+      unidade: irpm
+      faixa_fisica: [4, 60]
+      baixo: {medium: 10, high: 8, critical: 6}
+      alto: {medium: 22, high: 26, critical: 30}
+    pas:
+      nome: pressão arterial sistólica
+      unidade: mmHg
+      faixa_fisica: [40, 260]
+      baixo: {medium: 100, high: 90, critical: 80}
+      alto: {medium: 160, high: 180, critical: 200}
+    pad:
+      nome: pressão arterial diastólica
+      unidade: mmHg
+      faixa_fisica: [20, 160]
+      baixo: {medium: 60, high: 50, critical: 40}
+      alto: {medium: 100, high: 110, critical: 120}
+    temp:
+      nome: temperatura
+      unidade: °C
+      faixa_fisica: [30, 43]
+      baixo: {medium: 36.0, high: 35.0, critical: 34.0}
+      alto: {medium: 37.8, high: 38.5, critical: 40.0}
+
+  # Z-score robusto: compara cada leitura com a MEDIANA da janela recente, em
+  # vez da média, e usa o MAD no lugar do desvio padrão. Assim a própria
+  # anomalia não "estraga" a linha de base.
+  zscore:
+    janela_s: 900        # a linha de base é formada pelos últimos 15 min
+    min_pontos: 60       # sem essa quantidade de amostras na janela, não pontua
+    limiar: 4.0          # |z| a partir daqui é desvio estatístico (severidade low)
+    limiar_medium: 5.5
+    limiar_high: 7.5
+    # Piso da escala. O MAD de um sinal que fica parado (SpO2 em 97) é zero, e
+    # qualquer mudança de 1 ponto daria z infinito. O piso é a variação normal
+    # esperada de cada sinal, parecida com o ruído do simulador.
+    escala_min:
+      fc: 2.0
+      spo2: 0.6
+      fr: 0.8
+      pas: 3.0
+      pad: 2.0
+      temp: 0.1
+
+# Isolation Forest: olha os seis sinais JUNTOS e pega combinações incomuns, mesmo
+# quando nenhum sinal sozinho passou de limite ou do z-score. Treina só com
+# leituras que os outros detectores consideraram normais.
+isolation_forest:
+  ativo: true
+  semente: 2026
+  min_treino: 120          # leituras normais para o primeiro treino (20 min a cada 10 s)
+  max_treino: 360          # o treino usa só as 360 mais recentes (1 h)
+  refit_s: 1800            # treina de novo a cada 30 min
+  n_estimators: 100
+  quantil_limiar: 0.995    # o limiar sai desse quantil dos escores do próprio treino
+  margem_limiar: 1.15      # e é multiplicado por isto, porque o escore fora do treino é um pouco pior
+  a_saturacao: 0.75        # escore em que a anomalia já conta como máxima
+  duracao_min_s: 60
+  rebase_s: 900            # anomalia que dura mais que 15 min vira o novo normal
+
+# Prescrições: regras determinísticas. A chave de cada medicamento é o nome em
+# minúsculas e sem acento. Doses em mg, só para a demonstração (não são bula).
+prescricoes:
+  aumento:                     # aumento % da dose diária em relação ao pedido anterior
+    medium: 50
+    high: 100
+    critical: 300
+    janela_comparacao_h: 72    # só compara com pedido encerrado nas últimas 72 h
+  suspensao:
+    min_uso_h: 24              # medicamento contínuo em uso há pelo menos 24 h
+    janela_substituicao_h: 0.5 # sem novo pedido em 30 min = suspensão abrupta (curto, para a demo)
+  medicamentos:
+    dipirona:    {nome: Dipirona,    dose_min_mg: 500, dose_max_mg: 1000, dose_diaria_max_mg: 4000, continuo: false}
+    paracetamol: {nome: Paracetamol, dose_min_mg: 500, dose_max_mg: 1000, dose_diaria_max_mg: 4000, continuo: false}
+    ibuprofeno:  {nome: Ibuprofeno,  dose_min_mg: 200, dose_max_mg: 800,  dose_diaria_max_mg: 2400, continuo: false}
+    omeprazol:   {nome: Omeprazol,   dose_min_mg: 20,  dose_max_mg: 40,   dose_diaria_max_mg: 80,   continuo: true}
+    metoprolol:  {nome: Metoprolol,  dose_min_mg: 25,  dose_max_mg: 100,  dose_diaria_max_mg: 200,  continuo: true}
+    losartana:   {nome: Losartana,   dose_min_mg: 25,  dose_max_mg: 100,  dose_diaria_max_mg: 100,  continuo: true}
+    enoxaparina: {nome: Enoxaparina, dose_min_mg: 20,  dose_max_mg: 80,   dose_diaria_max_mg: 160,  continuo: true}
+
+# Movimentação (série movement.parquet do vídeo do leito). Tempos em segundos.
+movimento:
+  saida_leito:
+    confirmar_fora_s: 3      # fora do leito por 3 s seguidos para valer (ignora quadro falso)
+    retorno_s: 10            # de volta ao leito por 10 s seguidos para encerrar a saída
+    no_leito_min_s: 5        # a pessoa precisa ter ficado 5 s no leito antes, senão não é "saída"
+    ausencia_high_s: 600     # fora do leito por mais de 10 min sobe de medium para high
+    score: 0.70
+    score_high: 0.85
+  imobilidade:
+    limiar_s: 7200           # 2 h na mesma pose = low; sobe para medium e high pelos fatores abaixo
+    fator_medium: 1.5
+    fator_high: 2.0
+    bin_s: 60                # a pose é resumida em blocos de 1 min (mediana)
+    min_amostras_bin: 3
+    tol_angulo: 10           # graus de diferença para a pose ainda ser a mesma
+    tol_centro: 0.04         # deslocamento do centro (0 a 1) para a pose ainda ser a mesma
+    lacuna_max_s: 300        # 5 min sem pose zera a contagem

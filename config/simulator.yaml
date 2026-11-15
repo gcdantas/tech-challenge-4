@@ -1,0 +1,171 @@
+# Simulador de sinais vitais e prescrições (Integrante 3). Os dados são SINTÉTICOS.
+#
+# Cada sinal vital é gerado assim: valor basal + oscilação lenta (deriva) + ruído AR(1).
+# Os valores abaixo são didáticos, não foram calibrados clinicamente.
+
+semente: 2026
+
+vitais:
+  periodo_s: 10        # uma amostra a cada 10 s
+  duracao_min: 90
+  phi: 0.85            # quanto o ruído de agora depende do ruído da amostra anterior
+  arredondar: true     # monitor real mostra inteiro (temperatura com 1 casa)
+  resposta_fisiologica: true   # na dessaturação a FC e a FR sobem um pouco (o corpo compensa)
+
+  basal:
+    fc: 76
+    spo2: 97
+    fr: 16
+    pas: 122
+    pad: 76
+    temp: 36.7
+
+  ruido:               # desvio padrão do ruído de cada sinal
+    fc: 2.0
+    spo2: 0.4
+    fr: 0.8
+    pas: 3.0
+    pad: 2.0
+    temp: 0.04
+
+  deriva:              # amplitude da oscilação lenta (um ciclo a cada 2 h)
+    fc: 2.0
+    spo2: 0.3
+    fr: 0.5
+    pas: 3.0
+    pad: 2.0
+    temp: 0.05
+
+  # Quanto o basal pode variar de um paciente para outro. É em valor ABSOLUTO
+  # de cada sinal (e não em %), para o paciente continuar dentro do normal.
+  variacao_entre_pacientes:
+    fc: 8
+    spo2: 0.3
+    fr: 1.0
+    pas: 6
+    pad: 4
+    temp: 0.25
+
+prescricoes:
+  historico_h: 72      # os pedidos de admissão começam 72 h antes do início da demonstração
+
+# Reprodução em fluxo (para o dashboard e a gravação da demo)
+fluxo:
+  velocidade: 60              # 1 s real = 60 s da série (90 min de série levam 90 s). 0 = sem pausas
+
+# Cenário de cada paciente. Quem não estiver aqui roda a série estável, sem anomalias.
+pacientes:
+  P001: p001_integrado
+
+# Movimentação do leito, no formato do movement.parquet do I1 (colunas centroid_x,
+# centroid_y, torso_angle, velocidade e in_bed). O paciente fica deitado e se
+# reposiciona de tempos em tempos, como a equipe faz na internação.
+movimento:
+  hz: 1                       # o parquet real do I1 tem 5 Hz; aqui 1 Hz basta para horas de série
+  duracao_min: 90
+  phi: 0.9
+  deitado: {centroid_x: 0.50, centroid_y: 0.55, torso_angle: 85}
+  fora:    {centroid_x: 0.88, centroid_y: 0.50, torso_angle: 8}
+  ruido_centro: 0.002
+  ruido_angulo: 1.5
+  reposicionamento_min: 50    # troca de posição a cada ~50 min (varia de 35 a 65)
+  deslocamento_angulo: 25
+  deslocamento_centro: 0.06
+  rampa_s: 20
+  clipe_curto_min: 10         # clipe real com menos de 10 min é estendido com a série simulada
+
+# Cenários prontos.
+#
+# Injeções nos vitais (campo vitais.injecoes). Cada uma tem:
+#   tipo, inicio_min (minutos desde o início da série), duracao_min,
+#   magnitude (quanto o sinal muda no pico) e rampa_s (tempo para chegar no pico).
+# Tipos de anomalia (o sistema deve sinalizar):
+#   dessaturacao, taquicardia, hipotensao, febre, taquipneia, deterioracao_multivariada
+# Distratores (o sistema NÃO deve sinalizar):
+#   artefato_pico, perda_sinal, leitura_invalida
+#
+# Prescrições (campo prescricoes): pedidos_iniciais entram na admissão e cada
+# evento acontece no `minuto` indicado. Evento com anomalia: true diz qual achado
+# se espera (tipo_esperado); sem isso o evento é normal e NÃO pode gerar alerta.
+cenarios:
+  # Cenário da demonstração do P001: queda de SpO2 no minuto 45 e dipirona em duplicidade no minuto 20
+  p001_demo:
+    vitais:
+      injecoes:
+        - {tipo: dessaturacao, inicio_min: 45, duracao_min: 3, magnitude: 10, rampa_s: 40}
+    movimento:
+      eventos:
+        - {tipo: saida_do_leito, inicio_min: 47, duracao_s: 300}
+    prescricoes:
+      pedidos_iniciais:
+        - {medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3}
+        - {medicamento: metoprolol, dose_mg: 50, doses_por_dia: 2}
+        - {medicamento: omeprazol, dose_mg: 40, doses_por_dia: 1}
+      eventos:
+        - {acao: prescrever, minuto: 20, medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3, anomalia: true, tipo_esperado: dose_duplicada}
+
+  # Só distratores: nenhum deles é um problema clínico, então nenhum pode virar alerta
+  distratores_demo:
+    vitais:
+      injecoes:
+        - {tipo: artefato_pico, inicio_min: 30, duracao_min: 0.5, magnitude: 12}
+        - {tipo: perda_sinal, inicio_min: 50, duracao_min: 2}
+        - {tipo: leitura_invalida, inicio_min: 70, duracao_min: 1}
+
+  # Quatro anomalias nas prescrições e duas trocas normais, que não podem gerar alerta
+  prescricoes_demo:
+    prescricoes:
+      pedidos_iniciais:
+        - {medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3}
+        - {medicamento: metoprolol, dose_mg: 50, doses_por_dia: 2}
+        - {medicamento: omeprazol, dose_mg: 40, doses_por_dia: 1}
+        - {medicamento: losartana, dose_mg: 50, doses_por_dia: 1}
+        - {medicamento: ibuprofeno, dose_mg: 400, doses_por_dia: 3}
+      eventos:
+        # dose 10 vezes o máximo
+        - {acao: prescrever, minuto: 10, medicamento: paracetamol, dose_mg: 10000, doses_por_dia: 3, anomalia: true, tipo_esperado: dose_fora_da_faixa}
+        # mesmo medicamento pedido duas vezes
+        - {acao: prescrever, minuto: 20, medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3, anomalia: true, tipo_esperado: dose_duplicada}
+        # medicamento contínuo suspenso sem substituto
+        - {acao: suspender, minuto: 30, medicamento: metoprolol, anomalia: true, tipo_esperado: suspensao_abrupta}
+        # troca normal: suspende e pede de novo, mesma dose
+        - {acao: suspender, minuto: 40, medicamento: losartana}
+        - {acao: prescrever, minuto: 40, medicamento: losartana, dose_mg: 50, doses_por_dia: 1}
+        # dose diária dobra (de 1200 para 2400 mg)
+        - {acao: suspender, minuto: 50, medicamento: ibuprofeno}
+        - {acao: prescrever, minuto: 50, medicamento: ibuprofeno, dose_mg: 800, doses_por_dia: 3, anomalia: true, tipo_esperado: aumento_abrupto_dose}
+        # troca normal: mesma dose, e dentro do limite
+        - {acao: suspender, minuto: 60, medicamento: omeprazol}
+        - {acao: prescrever, minuto: 60, medicamento: omeprazol, dose_mg: 40, doses_por_dia: 1}
+
+  # Movimentação: saída do leito (com a pessoa se debruçando no meio), três distratores
+  # (quadro falso, perda de detecção e virar no leito) e uma imobilidade de 3 h.
+  # Em movimento, duracao_s é em segundos. Imobilidade: o paciente não se reposiciona
+  # entre inicio_min e inicio_min + duracao_s; alguém vira ele no fim.
+  movimento_demo:
+    movimento:
+      duracao_min: 300
+      eventos:
+        - {tipo: saida_do_leito, inicio_min: 20, duracao_s: 240, oscila: true}
+        - {tipo: falso_quadro, inicio_min: 40, duracao_s: 2}
+        - {tipo: perda_deteccao, inicio_min: 41, duracao_s: 2}
+        - {tipo: virar_no_leito, inicio_min: 60}
+        - {tipo: imobilidade, inicio_min: 100, duracao_s: 10800}
+
+  # Cenário integrado do P001, alinhado com o vídeo do leito (saída do leito às 10:10:18 na demo):
+  # queda de SpO2 no minuto 8, saída do leito no minuto 10 (só vale quando não há movement.parquet
+  # real) e dipirona em duplicidade no minuto 20. As três cabem na mesma janela de 30 min da fusão.
+  p001_integrado:
+    vitais:
+      injecoes:
+        - {tipo: dessaturacao, inicio_min: 45, duracao_min: 3, magnitude: 10, rampa_s: 40}
+    movimento:
+      eventos:
+        - {tipo: saida_do_leito, inicio_min: 10, duracao_s: 300}
+    prescricoes:
+      pedidos_iniciais:
+        - {medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3}
+        - {medicamento: metoprolol, dose_mg: 50, doses_por_dia: 2}
+        - {medicamento: omeprazol, dose_mg: 40, doses_por_dia: 1}
+      eventos:
+        - {acao: prescrever, minuto: 20, medicamento: dipirona, dose_mg: 1000, doses_por_dia: 3, anomalia: true, tipo_esperado: dose_duplicada}
