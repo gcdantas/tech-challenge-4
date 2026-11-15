@@ -210,7 +210,7 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 | Upload de vídeo, áudio e nota no Streamlit; chamada a `analyze()` dos Integrantes 1 e 2; laço com o simulador do Integrante 3 | 🟡 upload e análise pelo módulo dono prontos (`app/ingest.py`, seção 6.4); o dashboard lê o `findings.jsonl` do I3; falta a reprodução em fluxo com o `fluxo.py` |
 | Dashboard com frames do Integrante 1, transcrição e notas do Integrante 2, séries do Integrante 3 | ✅ abas por modalidade; a aba do Integrante 3 lê o `series_flagged.parquet` assim que ele existir |
 | Teste ponta a ponta do P001 com os módulos reais | 🟡 anomalias reais do I3 + mocks de vídeo, áudio e texto passam pela fusão (`tests/test_integracao_i3.py`); falta rodar com as saídas reais dos quatro |
-| Seções 1, 6 e 10 deste README, PDF consolidado a partir dele, vídeo, submissão | 🟡 seções 1, 6 e 10 escritas; PDF gerado por `python -m scripts.relatorio_pdf`; roteiro e checklist em `docs/entrega.md`; faltam o vídeo e a submissão |
+| Seções 1, 6 e 10 deste README, PDF consolidado a partir dele, vídeo, submissão | 🟡 seções 1, 6 e 10 escritas; PDF gerado por `python -m scripts.relatorio_pdf`; faltam o vídeo e a submissão |
 | Desejáveis (Integrante 4): confirmação de leitura ("Ciente"), Azure Blob Storage, Docker Compose | ⬜ |
 
 ## 4. Estrutura do repositório
@@ -239,7 +239,7 @@ scripts/material_video.py figuras do README e pacote do vídeo para o Integrante
 notebooks/rehab24/    avaliação e calibração do vídeo no REHAB24-6 (config da abdução, scripts)
 notebooks/charades/   conferência da série do leito com a anotação do Charades
 notebooks/comparacao/ comparação OpenPose × YOLOv8-pose com o gabarito do REHAB24-6
-docs/                 enunciado oficial (PDF), figuras do README (img/), 05-anomalias.md, entrega.md (roteiro do vídeo e checklist) e relatorio_tecnico.pdf
+docs/                 enunciado oficial (PDF), figuras do README (img/), 05-anomalias.md e relatorio_tecnico.pdf (relatório consolidado)
 tests/                pytest
 outputs/              saídas geradas (fora do Git)
 weights/              pesos dos modelos (fora do Git)
