@@ -58,7 +58,7 @@ Do enunciado (FIAP, Tech Challenge Fase 4):
 | Objetivo | Como o protótipo atende | Seção |
 |---|---|---|
 | Analisar e fundir texto, áudio e vídeo | um módulo por tipo de dado, todos entregando o mesmo formato (Finding), e uma fusão tardia por paciente | 6 |
-| Usar serviços em nuvem | Azure Speech to Text e Azure AI Language na consulta e nas notas | 6.5 e 8 |
+| Usar serviços em nuvem (opcional, conforme orientação do professor em 15/11) | Azure Speech to Text e Azure AI Language na consulta e nas notas | 6.5 e 8 |
 | Detectar anomalias em tempo quase real | detectores com `update(ponto)` sobre sinais vitais, prescrições e movimentação | 9 |
 | Vídeo: OpenPose, YOLOv8 e relatório automático | pose e regras na fisioterapia, pessoa e leito no quarto, relatório HTML | 7 |
 | Áudio: alterações vocais, termos críticos e sentimento | transcrição, termos críticos, sentimento e indicador vocal experimental | 8 |
@@ -629,6 +629,13 @@ Ainda não implementado (Integrante 4):
 | Azure AI Language | Sentimento por frase e apoio aos termos críticos, na transcrição e nas notas de evolução | Integrante 2 |
 | Text Analytics for Health (desejável) | Entidades clínicas em português | não implementado (seção 10.4) |
 | Azure Blob Storage (desejável) | Uploads da aplicação | não implementado (seção 10.4) |
+
+**Azure é opcional nesta fase.** Em 15/11/2026 o professor orientou que o uso
+do Azure é opcional e que ferramentas open source ou vistas em aula também
+valem. O grupo manteve o Azure no áudio e no texto, porque o módulo já estava
+implementado e validado com ele. Quem não tem as chaves roda a demonstração
+pelo cache das respostas ou pelo modo mock marcado (seção 8.5); os demais
+módulos não dependem de nuvem.
 
 Como o projeto usa o Azure:
 - **Recursos no nível gratuito (F0)**, criados pelo Integrante 2. A região e as
