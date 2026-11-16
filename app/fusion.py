@@ -105,6 +105,9 @@ class FusionConfig(BaseModel):
     cooldown_minutes: float = 30
     respiratory_terms: list[str] = Field(default_factory=list)
     severity_to_level: dict[str, AlertLevel]
+    # Teto de nível por tipo de Finding ("fonte:tipo"), quando a severidade do
+    # módulo mede confiança do modelo e não gravidade clínica.
+    level_caps: dict[str, AlertLevel] = Field(default_factory=dict)
     rules: list[Rule] = Field(default_factory=list)
     weighted: WeightedConfig = Field(default_factory=lambda: WeightedConfig(enabled=False))
 
@@ -172,23 +175,32 @@ class _Dedup:
     """Deduplicação e cooldown por paciente e tipo de alerta.
 
     Um alerta é emitido se não houver anterior do mesmo tipo, se o cooldown já
-    passou ou se o nível subiu. Caso contrário, seus Findings entram em
-    ``suppressed_finding_ids`` do último alerta emitido daquele tipo.
+    passou ou se o nível subiu. No ``ponderado``, também se ele traz evidência de
+    outra natureza (um par fonte/tipo que o anterior não tinha): dois grupos sem
+    relação (ex.: vídeo + leito às 10:20 e áudio + SpO2 às 10:45) não são a mesma
+    coisa só por terem o mesmo nome. Numa regra explícita, outra combinação que
+    satisfaz a mesma regra é repetição (ex.: o termo da nota no lugar do da
+    consulta), e não gera outro alerta nem outro e-mail.
+    Na repetição, os Findings entram em ``suppressed_finding_ids`` do último
+    alerta daquele tipo.
     """
 
     def __init__(self, cooldown: timedelta) -> None:
         self.cooldown = cooldown
         self.last: dict[str, Alert] = {}
+        self.kinds: dict[str, set[tuple[str, str]]] = {}
         self.emitted: list[Alert] = []
 
-    def offer(self, alert: Alert) -> Alert:
+    def offer(self, alert: Alert, kinds: set[tuple[str, str]]) -> Alert:
         prev = self.last.get(alert.rule)
         if (
             prev is None
             or alert.created_at - prev.created_at >= self.cooldown
             or LEVEL_ORDER[alert.level] > LEVEL_ORDER[prev.level]
+            or (alert.rule == WEIGHTED_RULE and not kinds <= self.kinds[alert.rule])
         ):
             self.last[alert.rule] = alert
+            self.kinds[alert.rule] = set(kinds)
             self.emitted.append(alert)
             return alert
         known = set(prev.finding_ids) | set(prev.suppressed_finding_ids)
@@ -241,8 +253,17 @@ def _rule_combos(findings: list[Finding], rule: Rule, cfg: FusionConfig) -> list
     return [c[3] for c in combos]
 
 
+def finding_level(f: Finding, cfg: FusionConfig) -> AlertLevel:
+    """Nível que a severidade do Finding pede, limitado pelo teto do tipo (``level_caps``)."""
+    level = cfg.severity_to_level[f.severity]
+    cap = cfg.level_caps.get(f"{f.source}:{f.type}")
+    if cap is not None and LEVEL_ORDER[level] > LEVEL_ORDER[cap]:
+        return cap
+    return level
+
+
 def _severity_level(group: Iterable[Finding], cfg: FusionConfig) -> AlertLevel:
-    return max((cfg.severity_to_level[f.severity] for f in group), key=LEVEL_ORDER.__getitem__)
+    return max((finding_level(f, cfg) for f in group), key=LEVEL_ORDER.__getitem__)
 
 
 def _weighted_groups(findings: list[Finding], cfg: FusionConfig) -> list[tuple[list[Finding], float, AlertLevel]]:
@@ -309,9 +330,11 @@ def fuse(findings: Iterable[Finding], cfg: FusionConfig) -> list[Alert]:
         items.sort(key=lambda f: (f.timestamp_start, str(f.finding_id)))
         dedup = _Dedup(cooldown)
         used: set[str] = set()
+        by_id = {str(f.finding_id): f for f in items}
 
         def consume(alert: Alert) -> None:
-            kept = dedup.offer(alert)
+            kinds = {(by_id[i].source, by_id[i].type) for i in alert.finding_ids}
+            kept = dedup.offer(alert, kinds)
             used.update(alert.finding_ids)
             used.update(kept.suppressed_finding_ids)
 
@@ -331,7 +354,7 @@ def fuse(findings: Iterable[Finding], cfg: FusionConfig) -> list[Alert]:
         for f in items:
             if str(f.finding_id) in used:
                 continue
-            level = cfg.severity_to_level[f.severity]
+            level = finding_level(f, cfg)
             consume(_make_alert(patient_id, f"isolado:{f.source}:{f.type}", level, f.description, [f], cfg))
 
         alerts.extend(dedup.emitted)
