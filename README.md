@@ -209,7 +209,7 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 | E-mail SMTP no alerta crítico (obrigatório), `config/alerts.yaml`, `email_sent_at`, contingência `.eml` | ✅ `app/notify.py`, um envio por alerta (seção 6.4); testado com conta Gmail real (senha de app) em 14/11 |
 | Upload de vídeo, áudio e nota no Streamlit; chamada a `analyze()` dos Integrantes 1 e 2; laço com o simulador do Integrante 3 | 🟡 upload e análise pelo módulo dono prontos (`app/ingest.py`, seção 6.4); o dashboard lê o `findings.jsonl` do I3; falta a reprodução em fluxo com o `fluxo.py` |
 | Dashboard com frames do Integrante 1, transcrição e notas do Integrante 2, séries do Integrante 3 | ✅ abas por modalidade; a aba do Integrante 3 lê o `series_flagged.parquet` assim que ele existir |
-| Teste ponta a ponta do P001 com os módulos reais | 🟡 anomalias reais do I3 + mocks de vídeo, áudio e texto passam pela fusão (`tests/test_integracao_i3.py`); falta rodar com as saídas reais dos quatro |
+| Teste ponta a ponta do P001 com os módulos reais | ✅ saídas reais dos quatro módulos em 16/11: alerta crítico pela regra às 10:45:50 (`scripts/e2e_p001.py`, seção 10.1) |
 | Seções 1, 6 e 10 deste README, PDF consolidado a partir dele, vídeo, submissão | 🟡 seções 1, 6 e 10 escritas; PDF gerado por `python -m scripts.relatorio_pdf`; faltam o vídeo e a submissão |
 | Desejáveis (Integrante 4): confirmação de leitura ("Ciente"), Azure Blob Storage, Docker Compose | ⬜ |
 
@@ -569,6 +569,11 @@ em três etapas:
      validar com o grupo.
 3. **Findings isolados.** O que ainda sobrar vira alerta pela severidade:
    `low`/`medium` → atenção, `high` → urgente, `critical` → crítico.
+
+**Teto de nível por tipo** (`level_caps`). Quando a severidade de um tipo de
+Finding mede a confiança do modelo, e não a gravidade clínica, ela é limitada.
+Hoje vale para o sentimento muito negativo do I2 (áudio e nota): sozinho, vira
+no máximo atenção, mas continua contando na combinação ponderada (seção 10.1).
 
 **Deduplicação e cooldown por paciente e tipo.** O tipo do alerta é a regra,
 `ponderado` ou `isolado:<fonte>:<tipo>`. Dentro do cooldown (30 min), um novo
@@ -1506,8 +1511,8 @@ emite o alerta crítico e o e-mail. A linha do tempo da demonstração começa �
 | 10:01 | 1. Fisioterapia (Integrante 1) | amplitude incompleta e tronco fora da faixa no agachamento → Findings `video` | **real**: REHAB24-6 PM_105 (seção 7.12) |
 | 10:10 | 2. Leito (Integrante 1 → Integrante 3) | o vídeo vira `movement.parquet`; o detector confirma a saída do leito → Finding `movement` | **real**: Charades SSP8C, saída às 10:10:18 (seção 9.3) |
 | 10:20 | 3. Prescrição (Integrante 3) | dose duplicada → Finding `prescription` | simulador do I3 (dados sintéticos) |
-| 10:30 | 4. Consulta (Integrante 2) | "falta de ar" na fala e indicador vocal alterado → Findings `audio` | **real** com Azure na máquina do I2; mock offline nas demais |
-| 10:40 | 5. Nota de evolução (Integrante 2) | "dispneia aos esforços" e "falta de ar", ausentes na nota anterior → Findings `text` | nota sintética, Azure na máquina do I2 |
+| 10:30 | 4. Consulta (Integrante 2) | "falta de ar" na fala e indicador vocal alterado → Findings `audio` | **real**: Azure e indicador vocal, processados na máquina do I2 |
+| 10:40 | 5. Nota de evolução (Integrante 2) | "dispneia", "sonolência" e "falta de ar", ausentes na nota anterior → Findings `text` | nota sintética, **Azure real** na máquina do I2 |
 | 10:45 | 6. Vitais (Integrante 3) | SpO2 cai a 87 % por 30 s → Finding `vitals` `dessaturacao` (alta) | simulador do I3 (dados sintéticos) |
 | 10:45:50 | 7. Fusão (Integrante 4) | indicador vocal + termo respiratório + dessaturação na mesma janela de 30 min → **alerta crítico** pela regra | — |
 | 10:45:50 | 8. Alerta à equipe (Integrante 4) | alerta no dashboard e no `alerts.jsonl`; e-mail à equipe | e-mail testado com conta real em 14/11 |
@@ -1526,33 +1531,41 @@ fontes (`tests/test_integracao_i3.py`; confira as suas saídas com
 | Crítico | 10:45:50 | regra `respiratorio_vocal_spo2` | 0,84 | indicador vocal, "falta de ar", dessaturação (+ o termo da nota, deduplicado) |
 | Urgente | 10:20:00 | `ponderado` | 0,70 | desvios da fisioterapia, saída do leito, dose duplicada |
 
-#### Teste ponta a ponta com saídas reais (15/11/2026)
+#### Teste ponta a ponta com as saídas reais dos quatro módulos (16/11/2026)
 
-`python -m scripts.e2e_p001` sobre as saídas geradas numa mesma máquina:
+`python -m scripts.e2e_p001` sobre as saídas reais de todos os módulos, reunidas
+numa mesma máquina:
 
 | Fonte | Origem | Findings |
 |---|---|---|
-| `video` | **real**: `modules.video.run` no REHAB24-6 PM_105 | 16 (9 amplitude incompleta, 7 postura fora da faixa) |
-| `movement` | **real**: `movement.parquet` do SSP8C → detector do I3 | 1 saída do leito (10:10:18) |
-| `vitals`, `prescription` | **real**: simulador e detectores do I3 | 1 dessaturação (10:45:20), 1 dose duplicada (10:20) |
-| `audio`, `text` | **mock marcado** do I2 (`--mock`), sem chaves do Azure nessa máquina | 2 e 3 |
+| `video` | `modules.video.run` no REHAB24-6 PM_105 | 16 (9 amplitude incompleta, 7 postura fora da faixa) |
+| `movement` | `movement.parquet` real do SSP8C → detector do I3 | 1 saída do leito (10:10:18) |
+| `vitals`, `prescription` | simulador e detectores do I3 | 1 dessaturação (10:45:20), 1 dose duplicada (10:20) |
+| `audio` | Azure Speech e Language + indicador vocal, na máquina do I2 | 10 (4 termos críticos, 4 sentimentos muito negativos, 2 indicadores vocais) |
+| `text` | Azure Language nas duas notas, na máquina do I2 | 5 (3 termos críticos na nota recente, 2 sentimentos) |
 
 | Nível | Horário | Tipo | Score | Findings |
 |---|---|---|---|---|
-| Urgente | 10:20:00 | `ponderado` | 0,70 | 18: os 16 desvios da fisioterapia, a saída do leito e a dose duplicada |
-| Urgente | 10:45:50 | `ponderado` | 0,88 | 6: termo crítico da consulta, termos da nota e a dessaturação |
+| Atenção | 02/11 10:00 | sentimento da nota anterior, isolado | 1,00 | 1 |
+| Urgente | 10:30:24 | `ponderado` | 0,77 | 23: desvios da fisioterapia, saída do leito, dose duplicada e o início da consulta |
+| Urgente | 10:40:00 | `ponderado` | 0,97 | 3: termos e sentimento da nota recente |
+| **Crítico** | **10:45:50** | regra `respiratorio_vocal_spo2` | 0,84 | 3: indicador vocal, "falta de ar" na consulta e dessaturação (+4 deduplicados) |
 
-Os 24 Findings viraram **2 alertas**, e não 24. **O alerta crítico não
-aparece** nessa execução: o mock do I2 não tem som para medir e, por isso, não
-gera o indicador vocal, uma das três condições da regra. Com o áudio real
-processado no Azure, que gera o indicador, a regra fecha como no teste com os
-mocks do M1 (acima). O resultado com as saídas reais dos quatro módulos deve ser
-registrado aqui antes da entrega.
+Os **34 Findings viraram 4 alertas**, e só um é crítico, com um único e-mail
+à equipe. As quatro verificações do script passam: seis fontes, arquivos
+válidos, alerta crítico pela regra e controle negativo.
 
-Esse teste também revelou um defeito, já corrigido: a deduplicação juntava dois
-alertas `ponderado` sem relação (vídeo + leito às 10:20 e áudio + SpO2 às 10:45)
-só por terem o mesmo nome. Agora um `ponderado` só é absorvido pelo anterior se
-não trouxer nenhum par fonte/tipo novo (`tests/test_fusion.py`).
+O teste com dados reais revelou dois defeitos que os mocks escondiam, ambos
+corrigidos na fusão:
+1. **Ponderados sem relação eram juntados.** A deduplicação absorvia o grupo
+   das 10:45 no das 10:20 só por terem o mesmo nome. Agora um `ponderado` só é
+   deduplicado se não trouxer nenhum par fonte/tipo novo.
+2. **Sentimento gerava alerta crítico.** O I2 calcula a severidade do
+   sentimento pela confiança do modelo; com confiança 1,0 vira `critical`, até
+   na nota estável "Nega falta de ar, dor no peito e desmaios". Sem correção,
+   seriam 4 alertas críticos e 4 e-mails. Agora `level_caps`, no
+   `config/fusion.yaml`, limita o sentimento sozinho a atenção; ele continua
+   contando na combinação ponderada.
 
 **Controle negativo.** Se a dessaturação for deslocada para fora da janela de
 30 min, a regra não dispara e não há alerta crítico
@@ -1591,7 +1604,7 @@ desempenho esperado em ambiente hospitalar real.
 | Áudio e texto | WER; termos críticos; concordância do indicador | 0,23%; P/R/F1 100% nos 6 termos; 100% em 6/6 gravações | seção 8.6 |
 | Anomalias | Recall e precisão dos vitais (limites + z-score); prescrições; movimentação | 90,0 % e 98,2 %; 100 % e 100 % (regras, por construção em dados sintéticos); saída do leito do SSP8C aos 18,0 s, com a anotação em 19,1 s | seção 9.3 |
 | Integração | Cenário P001: alerta crítico pela regra; controle negativo | 1 alerta crítico na janela; 0 fora dela | seção 10.1 |
-| Integração | Alertas do P001 com saídas reais (vídeo e anomalias) e mock marcado do I2 | 24 Findings → 2 alertas (sem a fusão seriam 24) | seção 10.1 |
+| Integração | Alertas do P001 com as saídas reais dos quatro módulos | 34 Findings → 4 alertas, 1 crítico pela regra e 1 e-mail (sem a fusão seriam 34 alertas e 4 críticos) | seção 10.1 |
 | Integração | Testes automatizados (todos os módulos) | 353 passam; 3 do OpenPose falham só quando a pasta do projeto tem acento (limitação do OpenCV no Windows) | seção 11 |
 
 ### 10.3 Limitações

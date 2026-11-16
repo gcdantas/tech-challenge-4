@@ -105,6 +105,9 @@ class FusionConfig(BaseModel):
     cooldown_minutes: float = 30
     respiratory_terms: list[str] = Field(default_factory=list)
     severity_to_level: dict[str, AlertLevel]
+    # Teto de nível por tipo de Finding ("fonte:tipo"), quando a severidade do
+    # módulo mede confiança do modelo e não gravidade clínica.
+    level_caps: dict[str, AlertLevel] = Field(default_factory=dict)
     rules: list[Rule] = Field(default_factory=list)
     weighted: WeightedConfig = Field(default_factory=lambda: WeightedConfig(enabled=False))
 
@@ -250,8 +253,17 @@ def _rule_combos(findings: list[Finding], rule: Rule, cfg: FusionConfig) -> list
     return [c[3] for c in combos]
 
 
+def finding_level(f: Finding, cfg: FusionConfig) -> AlertLevel:
+    """Nível que a severidade do Finding pede, limitado pelo teto do tipo (``level_caps``)."""
+    level = cfg.severity_to_level[f.severity]
+    cap = cfg.level_caps.get(f"{f.source}:{f.type}")
+    if cap is not None and LEVEL_ORDER[level] > LEVEL_ORDER[cap]:
+        return cap
+    return level
+
+
 def _severity_level(group: Iterable[Finding], cfg: FusionConfig) -> AlertLevel:
-    return max((cfg.severity_to_level[f.severity] for f in group), key=LEVEL_ORDER.__getitem__)
+    return max((finding_level(f, cfg) for f in group), key=LEVEL_ORDER.__getitem__)
 
 
 def _weighted_groups(findings: list[Finding], cfg: FusionConfig) -> list[tuple[list[Finding], float, AlertLevel]]:
@@ -342,7 +354,7 @@ def fuse(findings: Iterable[Finding], cfg: FusionConfig) -> list[Alert]:
         for f in items:
             if str(f.finding_id) in used:
                 continue
-            level = cfg.severity_to_level[f.severity]
+            level = finding_level(f, cfg)
             consume(_make_alert(patient_id, f"isolado:{f.source}:{f.type}", level, f.description, [f], cfg))
 
         alerts.extend(dedup.emitted)

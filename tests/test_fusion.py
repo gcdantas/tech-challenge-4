@@ -220,6 +220,23 @@ def test_ponderado_repetido_com_as_mesmas_fontes_e_deduplicado(cfg):
     assert alert.rule == "ponderado" and len(alert.suppressed_finding_ids) == 2
 
 
+def test_sentimento_sozinho_nao_gera_alerta_critico(cfg):
+    """Achado com as saídas reais do I2: sentimento com confiança 1,0 vem como
+    severidade critical, até numa nota estável. Sozinho, vira no máximo atenção."""
+    nota = mk("text", "sentimento_muito_negativo", 0, 1.0, "critical", note="nota_anterior")
+    (alert,) = fuse([nota], cfg)
+    assert alert.level == "atencao"
+    # A SpO2 critical do I3 continua gerando alerta crítico sozinha.
+    (spo2,) = fuse([mk("vitals", "dessaturacao", 0, 0.95, "critical")], cfg)
+    assert spo2.level == "critico"
+
+
+def test_teto_vale_dentro_da_combinacao_ponderada(cfg):
+    fs = [mk("audio", "sentimento_muito_negativo", 0, 1.0, "critical"), mk("video", "postura_fora_padrao", 2, 0.4, "low")]
+    (alert,) = fuse(fs, cfg)
+    assert alert.rule == "ponderado" and alert.level != "critico"
+
+
 def test_alert_id_estavel_quando_chegam_findings_deduplicados(cfg):
     """O e-mail usa o alert_id para não reenviar: ele não pode mudar com os suprimidos."""
     fs = [mk("video", "amplitude_incompleta", 0)]
