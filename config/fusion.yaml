@@ -28,6 +28,15 @@ severity_to_level:
   high: urgente
   critical: critico
 
+# Teto de nível por tipo de Finding ("fonte:tipo"). O sentimento do I2 tem
+# severidade calculada pela confiança do modelo, não pela gravidade clínica:
+# no teste com as saídas reais, a nota estável "Nega falta de ar, dor no peito
+# e desmaios" saiu como sentimento "critical" e geraria e-mail. Sozinho, o
+# sentimento vira no máximo atenção; ele continua contando na combinação ponderada.
+level_caps:
+  audio:sentimento_muito_negativo: atencao
+  text:sentimento_muito_negativo: atencao
+
 # Cada condição é uma lista de alternativas (basta uma). A regra dispara quando
 # todas as condições têm um Finding dentro da mesma janela.
 rules:

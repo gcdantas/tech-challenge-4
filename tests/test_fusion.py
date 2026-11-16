@@ -194,6 +194,49 @@ def test_regra_dentro_do_cooldown_absorve_os_findings(cfg):
     assert crit.suppressed_finding_ids == [str(fs[3].finding_id)]
 
 
+def test_ponderados_sem_relacao_nao_se_deduplicam(cfg):
+    """Achado no ponta a ponta com saídas reais: a SpO2 das 10:45 sumia dentro do
+    ponderado das 10:20 (vídeo + leito + prescrição) só por ter o mesmo nome de regra."""
+    fs = [
+        mk("video", "amplitude_incompleta", 0, 0.6),
+        mk("movement", "saida_do_leito", 9, 0.7),
+        mk("prescription", "dose_duplicada", 19, 0.75, "high"),
+        mk("audio", "termo_critico", 32, 0.8, term="tosse"),
+        mk("vitals", "dessaturacao", 44, 0.87, "high"),
+    ]
+    alerts = by_rule(fuse(fs, cfg))["ponderado"]
+    assert len(alerts) == 2
+    assert all(not a.suppressed_finding_ids for a in alerts)
+    assert {by for a in alerts for by in a.finding_ids} == {str(f.finding_id) for f in fs}
+
+
+def test_ponderado_repetido_com_as_mesmas_fontes_e_deduplicado(cfg):
+    fs = [
+        mk("movement", "saida_do_leito", 0, 0.6), mk("prescription", "dose_duplicada", 1, 0.6),
+        mk("movement", "saida_do_leito", 35, 0.6), mk("prescription", "dose_duplicada", 36, 0.6),
+    ]
+    cfg = cfg.model_copy(update={"cooldown_minutes": 60})
+    (alert,) = fuse(fs, cfg)
+    assert alert.rule == "ponderado" and len(alert.suppressed_finding_ids) == 2
+
+
+def test_sentimento_sozinho_nao_gera_alerta_critico(cfg):
+    """Achado com as saídas reais do I2: sentimento com confiança 1,0 vem como
+    severidade critical, até numa nota estável. Sozinho, vira no máximo atenção."""
+    nota = mk("text", "sentimento_muito_negativo", 0, 1.0, "critical", note="nota_anterior")
+    (alert,) = fuse([nota], cfg)
+    assert alert.level == "atencao"
+    # A SpO2 critical do I3 continua gerando alerta crítico sozinha.
+    (spo2,) = fuse([mk("vitals", "dessaturacao", 0, 0.95, "critical")], cfg)
+    assert spo2.level == "critico"
+
+
+def test_teto_vale_dentro_da_combinacao_ponderada(cfg):
+    fs = [mk("audio", "sentimento_muito_negativo", 0, 1.0, "critical"), mk("video", "postura_fora_padrao", 2, 0.4, "low")]
+    (alert,) = fuse(fs, cfg)
+    assert alert.rule == "ponderado" and alert.level != "critico"
+
+
 def test_alert_id_estavel_quando_chegam_findings_deduplicados(cfg):
     """O e-mail usa o alert_id para não reenviar: ele não pode mudar com os suprimidos."""
     fs = [mk("video", "amplitude_incompleta", 0)]

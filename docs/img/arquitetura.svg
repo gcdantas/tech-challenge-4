@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 470" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="14">
+  <title>Arquitetura do protótipo: fusão tardia multimodal</title>
+  <defs>
+    <marker id="seta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#555"/>
+    </marker>
+    <style>
+      .entrada { fill:#f4f6f8; stroke:#9aa5b1; }
+      .modulo  { fill:#e8f1fb; stroke:#3b78c2; }
+      .i4      { fill:#fff4e5; stroke:#d9822b; }
+      .saida   { fill:#fdecea; stroke:#c0392b; }
+      .nuvem   { fill:#eef7ee; stroke:#3c9a4b; stroke-dasharray:6 4; }
+      .t  { fill:#1f2933; }
+      .tb { fill:#1f2933; font-weight:600; }
+      .ts { fill:#52606d; font-size:12px; }
+      .linha { stroke:#555; stroke-width:1.6; fill:none; marker-end:url(#seta); }
+    </style>
+  </defs>
+
+  <!-- Entradas -->
+  <text x="20" y="30" class="tb">Dados (públicos ou sintéticos)</text>
+  <rect class="entrada" x="20" y="50" width="220" height="70" rx="8"/>
+  <text x="34" y="78" class="tb">Vídeos</text>
+  <text x="34" y="100" class="ts">REHAB24-6 (fisio) · Charades (leito)</text>
+
+  <rect class="entrada" x="20" y="200" width="220" height="70" rx="8"/>
+  <text x="34" y="228" class="tb">Consultas e notas</text>
+  <text x="34" y="250" class="ts">WAV gravados · notas sintéticas</text>
+
+  <rect class="entrada" x="20" y="370" width="220" height="70" rx="8"/>
+  <text x="34" y="398" class="tb">Simulador (I3)</text>
+  <text x="34" y="420" class="ts">vitais · prescrições · movimentação</text>
+
+  <!-- Módulos -->
+  <text x="300" y="30" class="tb">Módulos (um por integrante)</text>
+  <rect class="modulo" x="300" y="50" width="250" height="80" rx="8"/>
+  <text x="314" y="76" class="tb">I1 · Vídeo</text>
+  <text x="314" y="97" class="ts">YOLOv8-pose, YOLOv8, OpenPose</text>
+  <text x="314" y="115" class="ts">relatório HTML, quadros, clipes</text>
+
+  <rect class="modulo" x="300" y="195" width="250" height="80" rx="8"/>
+  <text x="314" y="221" class="tb">I2 · Áudio e texto clínico</text>
+  <text x="314" y="242" class="ts">transcrição, sentimento, termos</text>
+  <text x="314" y="260" class="ts">indicador vocal (Praat, z-score)</text>
+
+  <rect class="modulo" x="300" y="365" width="250" height="80" rx="8"/>
+  <text x="314" y="391" class="tb">I3 · Anomalias</text>
+  <text x="314" y="412" class="ts">limites, z-score robusto,</text>
+  <text x="314" y="430" class="ts">Isolation Forest, regras</text>
+
+  <!-- Nuvem -->
+  <rect class="nuvem" x="330" y="292" width="190" height="56" rx="8"/>
+  <text x="344" y="314" class="tb">Azure</text>
+  <text x="344" y="334" class="ts">Speech · AI Language (cache)</text>
+  <path class="linha" d="M425,292 L425,278"/>
+
+  <!-- I4 -->
+  <rect class="i4" x="620" y="120" width="250" height="260" rx="10"/>
+  <text x="634" y="148" class="tb">I4 · Integração</text>
+  <text x="634" y="176" class="t">Contrato Finding (Pydantic)</text>
+  <text x="634" y="200" class="t">Alinhamento: demo_offset</text>
+  <text x="634" y="230" class="tb">Fusão tardia por paciente</text>
+  <text x="646" y="252" class="ts">1. regras explícitas (precedência)</text>
+  <text x="646" y="272" class="ts">2. combinação ponderada dos scores</text>
+  <text x="646" y="292" class="ts">3. isolados pela severidade</text>
+  <text x="646" y="312" class="ts">deduplicação e cooldown 30 min</text>
+  <text x="634" y="342" class="t">Níveis: atenção · urgente · crítico</text>
+  <text x="634" y="364" class="ts">Streamlit: upload chama analyze()</text>
+
+  <!-- Saídas -->
+  <text x="910" y="30" class="tb">Equipe médica</text>
+  <rect class="saida" x="910" y="120" width="170" height="60" rx="8"/>
+  <text x="924" y="146" class="tb">Dashboard</text>
+  <text x="924" y="166" class="ts">Streamlit, abas por fonte</text>
+  <rect class="saida" x="910" y="220" width="170" height="60" rx="8"/>
+  <text x="924" y="246" class="tb">alerts.jsonl</text>
+  <text x="924" y="266" class="ts">todos os alertas</text>
+  <rect class="saida" x="910" y="320" width="170" height="60" rx="8"/>
+  <text x="924" y="346" class="tb">E-mail SMTP</text>
+  <text x="924" y="366" class="ts">só crítico · .eml reserva</text>
+
+  <!-- Setas entradas → módulos -->
+  <path class="linha" d="M240,85 L300,90"/>
+  <path class="linha" d="M240,235 L300,235"/>
+  <path class="linha" d="M240,405 L300,405"/>
+  <!-- movement.parquet I1 → I3 -->
+  <path class="linha" d="M560,110 C590,200 590,330 552,385"/>
+  <text x="566" y="250" class="ts" transform="rotate(90 566 250)">movement.parquet</text>
+  <!-- Findings → I4 -->
+  <path class="linha" d="M550,90 L620,170"/>
+  <path class="linha" d="M550,235 L620,240"/>
+  <path class="linha" d="M550,405 L620,330"/>
+  <text x="586" y="118" class="ts">Findings</text>
+  <!-- I4 → saídas -->
+  <path class="linha" d="M870,150 L910,150"/>
+  <path class="linha" d="M870,250 L910,250"/>
+  <path class="linha" d="M870,350 L910,350"/>
+</svg>
