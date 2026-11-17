@@ -243,7 +243,7 @@ Exemplos de séries com as anomalias marcadas:
 
 ### 9.1 Fonte dos dados
 
-Os sinais vitais e as prescrições são sintéticos, gerados pelo simulador da seção 2 com o catálogo didático de medicamentos do `config/anomaly.yaml`. Não usei MIMIC-IV Demo nem BIDMC (PhysioNet). A movimentação usa o `movement.parquet` real do Integrante 1 (Charades SSP8C) quando ele existe, estendido com a série simulada.
+Os sinais vitais e as prescrições são sintéticos, gerados pelo simulador da seção 2 com o catálogo didático de medicamentos do `config/anomaly.yaml`. Não usei MIMIC-IV Demo nem BIDMC (PhysioNet). A movimentação usa o `movement.parquet` real do Integrante 1 (Charades SSP8C) quando ele existe, com um trecho simulado do paciente deitado antes do clipe (seção 2.4).
 
 ### 9.2 O que o módulo recebe do vídeo
 
