@@ -247,3 +247,7 @@ weights/
 
 # Plano interno do grupo (não versionado). O enunciado oficial fica versionado em docs/.
 docs/Tech Challenge Fase 4*Divis*.pdf
+/CLAUDE.md
+
+# PDF do relatório: réplica do README, gerada com python -m scripts.relatorio_pdf
+docs/relatorio_tecnico.pdf

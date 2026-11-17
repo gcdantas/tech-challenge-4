@@ -16,7 +16,7 @@ para a demonstração técnica.
 
 ## Sumário
 
-1. [Introdução e problema (Integrante 4)](#1-introdução-e-problema-integrante-4)
+1. [Introdução e problema](#1-introdução-e-problema)
 2. [Responsabilidades](#2-responsabilidades)
 3. [Entregas por integrante](#3-entregas-por-integrante)
 4. [Estrutura do repositório](#4-estrutura-do-repositório)
@@ -31,7 +31,14 @@ para a demonstração técnica.
 13. [Dados, licenças e privacidade](#13-dados-licenças-e-privacidade)
 14. [Referências](#14-referências)
 
-## 1. Introdução e problema (Integrante 4)
+## Integrantes do grupo
+
+- Integrante 1: Gustavo de Carvalho Dantas - rm372153
+- Integrante 2: Marcius Lucas Fernandes - rm371349
+- Integrante 3: Lucas dos Santos Camilo - rm373405
+- Integrante 4: Sabrina de Oliveira Zago Capanema - rm370447
+
+## 1. Introdução e problema
 
 ### Contexto
 
@@ -96,8 +103,8 @@ Fonte: plano do grupo, *Tech Challenge Fase 4 — Divisão do trabalho v5*.
 | Integrante 4 | Integração: contrato, aplicação, fusão, alertas, dashboard | Repositório, README, arquitetura, relatório consolidado, edição do vídeo | `contracts/`, `app/` | Seções 1, 6 e 10; PDF consolidado |
 
 O plano previa o relatório técnico em capítulos separados em `docs/` (01 a 06).
-Aqui cada capítulo é uma seção deste README, e o PDF consolidado da entrega
-(`docs/relatorio_tecnico.pdf`) é gerado a partir dele com
+Aqui cada capítulo é uma seção deste README. Uma versão em PDF
+(`docs/relatorio_tecnico.pdf`, fora do Git) pode ser gerada a partir dele com
 `python -m scripts.relatorio_pdf`. Os Integrantes 2 e 3 mantêm também uma versão
 mais detalhada do próprio capítulo (`docs/04-audio.md` e `docs/05-anomalias.md`),
 que fica no Git mas não entra no PDF:
@@ -132,10 +139,10 @@ Detalhes na seção 7.2.
 
 | Integrante | O que entregou | Seção |
 |---|---|---|
-| Integrante 1: vídeo | Download reproduzível dos vídeos (REHAB24-6 e Charades); pose com YOLOv8-pose, ângulos, repetições e as regras `amplitude_incompleta` e `postura_fora_padrao`, com limiares calibrados no REHAB24-6; OpenPose via OpenCV DNN e comparação com o YOLOv8-pose contra o gabarito da captura de movimento; leito com YOLOv8 (pessoa, cama e zona da borda) → `movement.parquet` e rótulo de saída do leito para o Integrante 3; relatório HTML, clipes e quadros anotados; avaliação contra as anotações dos datasets; figuras do relatório e pacote para a edição do vídeo | 7 |
+| Integrante 1: vídeo | Esqueleto inicial do repositório para destravar o M1: primeira versão do contrato Finding, do `patients.yaml`, do Streamlit e da regra crítica da fusão, e os mocks de todas as fontes; download reproduzível dos vídeos (REHAB24-6 e Charades); pose com YOLOv8-pose, ângulos, repetições e as regras `amplitude_incompleta` e `postura_fora_padrao`, com limiares calibrados no REHAB24-6; OpenPose via OpenCV DNN e comparação com o YOLOv8-pose contra o gabarito da captura de movimento; leito com YOLOv8 (pessoa, cama e zona da borda) → `movement.parquet` e rótulo de saída do leito para o Integrante 3; relatório HTML, clipes e quadros anotados; avaliação contra as anotações dos datasets; figuras do relatório e pacote para a edição do vídeo | 7 |
 | Integrante 2: áudio e texto | Seis consultas gravadas e um baseline do mesmo locutor; transcrição com Azure Speech to Text; sentimento com Azure AI Language e termos críticos com negação; duas notas de evolução sintéticas com comparação entre notas; indicador experimental de alteração vocal contra a linha de base do próprio paciente; cache das respostas; métricas com revisão humana | 8 |
 | Integrante 3: anomalias | Simulador de vitais, prescrições e movimentação em fluxo; detectores com `update(ponto)` (limites clínicos, z-score robusto, Isolation Forest, regras de prescrição e de movimentação); série de movimentação composta a partir do `movement.parquet` real; avaliação em 505 pacientes simulados, com gráficos | 9 |
-| Integrante 4: integração | Contrato Finding e `patients.yaml`; fusão com regra crítica, combinação ponderada, teto de nível e deduplicação com cooldown; e-mail SMTP no alerta crítico com contingência `.eml`; dashboard com uma aba por fonte e upload que chama o módulo dono; teste ponta a ponta do P001; seções 1, 6 e 10 e o PDF consolidado | 1, 6 e 10 |
+| Integrante 4: integração | Contrato Finding e `patients.yaml` (a partir da versão inicial do Integrante 1); fusão com regra crítica, combinação ponderada, teto de nível e deduplicação com cooldown; e-mail SMTP no alerta crítico com contingência `.eml`; dashboard com uma aba por fonte e upload que chama o módulo dono; teste ponta a ponta do P001; seções 1, 6 e 10 e o gerador do PDF consolidado (`scripts/relatorio_pdf.py`) | 1, 6 e 10 |
 
 Os desejáveis do plano que não foram feitos estão na seção 10.4.
 
@@ -165,7 +172,7 @@ scripts/material_video.py figuras do README e pacote do vídeo para o Integrante
 notebooks/rehab24/    avaliação e calibração do vídeo no REHAB24-6 (config da abdução, scripts)
 notebooks/charades/   conferência da série do leito com a anotação do Charades
 notebooks/comparacao/ comparação OpenPose × YOLOv8-pose com o gabarito do REHAB24-6
-docs/                 enunciado oficial (PDF), figuras do README (img/), 04-audio.md e 05-anomalias.md (capítulos detalhados dos Integrantes 2 e 3) e relatorio_tecnico.pdf (relatório consolidado)
+docs/                 enunciado oficial (PDF), figuras do README (img/), 04-audio.md e 05-anomalias.md (capítulos detalhados dos Integrantes 2 e 3)
 tests/                pytest; p001_sintetico.py gera os dados fictícios do P001 usados nos testes (seção 6.3)
 outputs/              saídas geradas (fora do Git)
 weights/              pesos dos modelos (fora do Git)
@@ -320,7 +327,7 @@ patients:
 ```
 
 - `kind`: `video_physio | video_bed | audio | note | vitals | prescriptions`.
-- `path` relativo à raiz; `null` enquanto não definido.
+- `path` relativo à raiz; `null` quando o dado é gerado pelo simulador (vitais e prescrições).
 - `demo_offset` em segundos (pode ser negativo).
 - Cada módulo grava `instante = demo_reference + demo_offset + tempo interno da mídia`
   (`PatientsFile.demo_time()`).
@@ -342,8 +349,8 @@ python -m modules.<modulo>.run --input ... --patient P001 --out findings.jsonl
 
 ### 6.3 Dados sintéticos de teste e marcação de mock
 
-No início (marco M1), mocks fictícios de cada integrante deixaram o pipeline
-rodar de ponta a ponta antes dos módulos reais. Hoje os quatro módulos são
+No início (marco M1), mocks fictícios de todas as fontes, feitos pelo
+Integrante 1, deixaram o pipeline rodar de ponta a ponta antes dos módulos reais. Hoje os quatro módulos são
 reais e `outputs/` só recebe as saídas deles. Dados fictícios continuam em dois
 lugares, sempre marcados:
 
@@ -435,8 +442,8 @@ em três etapas:
      Finding: a combinação pode subir o nível (corroboração entre fontes),
      nunca rebaixar.
    - É uma heurística de priorização do protótipo, não probabilidade clínica
-     calibrada (seção 12). Os pesos e limiares são escolhas de projeto, a
-     validar com o grupo.
+     calibrada (seção 12). Os pesos e limiares são escolhas de projeto do
+     grupo, não aprendidos de dados (seção 10.3).
 3. **Findings isolados.** O que ainda sobrar vira alerta pela severidade:
    `low`/`medium` → atenção, `high` → urgente, `critical` → crítico.
 
@@ -771,7 +778,7 @@ abdução de ombro. O mesmo código serve a outros exercícios trocando só o
 
 #### Regras de desvio
 
-| Evento (`type`) | Quando é sinalizado | Faixa esperada (inicial) | Score | Severidade por desvio |
+| Evento (`type`) | Quando é sinalizado | Faixa esperada (calibrada) | Score | Severidade por desvio |
 |---|---|---|---|---|
 | `amplitude_incompleta` | O pico do ângulo principal na repetição não chega à faixa esperada | joelho até 115° (faixa 70–115°) | desvio ÷ 60°, limitado a 1 | < 15°: low · 15–35°: medium · ≥ 35°: high |
 | `postura_fora_padrao` | A inclinação do tronco fica fora da faixa esperada por pelo menos 0,5 s seguidos dentro da repetição | 0–35° | desvio ÷ 40°, limitado a 1 | < 10°: low · 10–25°: medium · ≥ 25°: high |
@@ -929,8 +936,9 @@ Integrante 3 consome:
 - **Metadados do arquivo:** vídeo de origem, `demo_offset`, frequência efetiva, caixa do leito, unidades, modelos e `mock=false`.
 - **Rótulos de saída do leito:** `bed_exits` em `data/labels/<video>.yaml` é copiado para `bed_exit_labels.json`, para as métricas do Integrante 3.
 
-A série tem a duração do vídeo (30 s). A série estendida, que simula horas de
-internação, é composta pelo simulador do Integrante 3 a partir deste arquivo.
+A série tem a duração do vídeo (30 s). O simulador do Integrante 3 compõe a
+série de movimentação do P001 a partir deste arquivo, com um trecho simulado do
+paciente deitado antes do clipe (seção 9.2).
 
 **Resultado no leito do P001 (Charades SSP8C)**
 
@@ -948,8 +956,8 @@ internação, é composta pelo simulador do Integrante 3 a partir deste arquivo.
 *SSP8C aos 0 s (no leito, tronco a 84°) e aos 20 s (fora do leito, tronco a 6°). Em azul o leito, em laranja a zona da borda (área crítica). Vídeo: Charades (Sigurdsson et al., ECCV 2016; Allen Institute for AI).*
 
 As oscilações vêm da limitação da sobreposição de caixas em 2D (seção 7.13). O
-detector de saída do leito do Integrante 3 deve exigir alguns segundos fora do
-leito antes de sinalizar.
+detector de saída do leito do Integrante 3 as absorve: só confirma a saída com
+3 s seguidos fora do leito e só encerra com 10 s seguidos de volta (seção 9.3).
 
 ### 7.9 Alinhamento temporal
 
