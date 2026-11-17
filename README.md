@@ -1216,6 +1216,14 @@ Interface Python: `from modules.audio import analyze`, seguida de
 dependem de `TC_AUDIO_ALLOW_AZURE=1`; a CLI exige `--allow-azure`. Mock nunca é
 usado como fallback silencioso nem substitui saídas reais.
 
+**Limite do modo `--mock`.** A fixture mock tem só texto, sem áudio, então o
+indicador vocal fica `not_evaluated` e não gera Finding. Sem ele, a regra
+crítica da fusão (indicador vocal + termo respiratório + dessaturação, seção
+10.1) não dispara: com o áudio em mock, o P001 termina com dois alertas
+urgentes e nenhum crítico, e o `python -m scripts.e2e_p001` acusa
+`[FALHOU] alerta crítico pela regra`. O alerta crítico exige as saídas reais do
+áudio, geradas com as gravações de `data/audio/` e o Azure.
+
 ### 8.6 Métricas e resultados
 
 Validação em CPython 3.13.18 / Windows x64: **43 testes do I2 passaram**.
@@ -1430,7 +1438,9 @@ numa mesma máquina:
 
 Os **34 Findings viraram 4 alertas**, e só um é crítico, com um único e-mail
 à equipe. As quatro verificações do script passam: seis fontes, arquivos
-válidos, alerta crítico pela regra e controle negativo.
+válidos, alerta crítico pela regra e controle negativo. Com o áudio em modo
+`--mock`, a verificação do alerta crítico falha, porque o mock não produz o
+indicador vocal (seção 8.5).
 
 O teste com dados reais revelou dois defeitos que os dados sintéticos escondiam, ambos
 corrigidos na fusão:
