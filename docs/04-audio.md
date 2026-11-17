@@ -1,6 +1,6 @@
 # 04 - Análise de áudio e texto clínico (Integrante 2)
 
-Implementação local validada em 11/11/2026. **Azure real ainda não validado.**
+Implementação local validada em 11/11/2026; execução com Azure real em 12/11/2026.
 Este capítulo é a contribuição do I2 para o relatório consolidado pelo I4.
 Os comandos resumidos e o status ficam também na seção 8 do README.
 
@@ -42,8 +42,7 @@ Analytics for Health, que permanecem fora deste MVP.
 
 ## Instalação e compatibilidade
 
-Execute na raiz que contém `README.md`, `modules/` e `requirements.txt`.
-Neste workspace ela é a subpasta `tech-challenge-5-main` dentro da pasta inicial.
+Execute na raiz do repositório, a que contém `README.md`, `modules/` e `requirements.txt`.
 
 ```powershell
 py -3.13 -m venv .venv
@@ -68,8 +67,8 @@ operacionais não foram executados nesta validação.
 
 ## Recursos Azure e credenciais
 
-Nenhum recurso foi provisionado, nenhuma chave foi criada e nenhuma chamada
-de inferência Azure foi executada nesta entrega. Preparação humana:
+Os recursos Speech e Language foram criados pelo I2 no nível gratuito (F0), e a
+execução real foi feita em 12/11/2026. Para reproduzir em outra assinatura:
 
 1. No portal Azure, selecionar a assinatura e o grupo de recursos da equipe.
 2. Criar ou reutilizar um recurso **Speech** e um recurso **Language** com
@@ -307,9 +306,10 @@ python -m pytest -o addopts="" -q -ra
 python -c "from contracts.finding import read_findings; print(len(read_findings('outputs/audio/P001/findings.jsonl')), len(read_findings('outputs/text/P001/findings.jsonl')))"
 ```
 
-Validação local: **43 testes I2 passaram**. Suíte completa: **118 passaram e
-6 foram pulados** por ausência dos pesos YOLOv8/OpenPose. Resultado registrado
-também na seção 8.6 do README e em `outputs/audio/validation/pytest.xml`.
+Validação local: **43 testes I2 passaram**. Na validação de 11/11, a suíte
+completa tinha 118 testes aprovados e 6 pulados por ausência dos pesos
+YOLOv8/OpenPose; em 16/11, com os quatro módulos integrados, a suíte completa
+tem 357 testes, todos aprovados (README, seção 11).
 Testes usam eventos Speech simulados e objetos reais das classes de resposta
 Language com cliente simulado, além de um teste do cliente Language real com
 transporte HTTP offline para conferir requisições e deserialização. Não há rede
@@ -320,8 +320,8 @@ Esses sinais não representam consultas nem demonstram desempenho clínico.
 O cenário mock gera 2 Findings de áudio (termo e sentimento) e 3 de texto.
 A nota estável não gera termos afirmados; a recente inclui dispneia, sonolência
 e falta de ar. Os arquivos passam no contrato Pydantic e nos leitores existentes.
-A regra de fusão aceita `evidence.term` em teste com complementos simulados,
-mas nenhum alerta real do cenário multimodal foi validado nesta entrega.
+A regra de fusão aceita `evidence.term`. O cenário multimodal com as saídas
+reais dos quatro módulos foi validado em 16/11/2026 (README, seção 10.1).
 
 ### Métricas: estado e reprodução
 
@@ -364,18 +364,16 @@ Guardar o gabarito e as gravações fora do Git. Separar métricas por modalidad
 e por locutor/gravação; não usar o mesmo roteiro para calibrar e alegar avaliação
 independente. Amostras pequenas simuladas não representam ambiente hospitalar.
 
-## Pendências humanas e dos outros integrantes
+## Integração com os outros integrantes
 
-**I2 / usuário:** recursos e credenciais Azure, execução real, consultas,
-baseline, revisão humana, rótulos, métricas e evidências foram concluídos.
-Resta preparar os slides da apresentação e revisar este capítulo no relatório.
+**I2:** recursos e credenciais Azure, execução real, consultas, baseline,
+revisão humana, rótulos, métricas e evidências foram concluídos.
 
-**I4:** integração visual de `notes.json`, upload/chamada de `analyze()`, fusão
-final, alertas/e-mail, relatório consolidado e validação multimodal real.
-**I3:** vitais, prescrições e movimentação; **I1:** evidências e pendências de
-vídeo já descritas em sua própria seção. Nenhuma dessas frentes foi implementada
-ou substituída por este módulo. Ao gerar mocks dos outros integrantes, usar
-`python -m scripts.make_mocks --skip i1 i2` para preservar vídeo e áudio/texto.
+**I4:** integrou `transcript.json` e `notes.json` ao dashboard, o upload que
+chama `analyze()`, a fusão, os alertas e o e-mail, e validou o cenário
+multimodal com as saídas reais (README, seções 6.4 e 10.1). **I3** e **I1**:
+seções 9 e 7 do README. Nenhuma dessas frentes foi implementada ou substituída
+por este módulo.
 
 O MVP I2 está implementado, testado localmente e validado com Azure real em
 amostra sintética revisada. As limitações da amostra permanecem explícitas.
