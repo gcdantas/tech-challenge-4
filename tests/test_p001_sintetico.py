@@ -1,4 +1,5 @@
-"""Todos os mocks do M1 validam contra o contrato e seguem os caminhos do plano."""
+"""Os dados sintéticos de teste (tests/p001_sintetico.py) validam contra o contrato,
+seguem os caminhos das saídas reais, são marcados como fictícios e são determinísticos."""
 
 import json
 from datetime import timedelta
@@ -7,7 +8,7 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from contracts import SOURCES, read_findings
-from scripts.make_mocks import MOVEMENT_COLUMNS, make_all
+from tests.p001_sintetico import MOVEMENT_COLUMNS, make_all
 
 EXPECTED_FINDINGS = {
     "video/P001/findings.jsonl": {("video", "amplitude_incompleta"), ("video", "postura_fora_padrao")},
@@ -84,17 +85,3 @@ def test_mocks_sao_deterministicos(tmp_path):
         pd.read_parquet(a / "video/P001/movement.parquet"), pd.read_parquet(b / "video/P001/movement.parquet")
     )
 
-
-def test_skip_preserva_saidas_reais_e_ids_dos_outros(tmp_path):
-    real = tmp_path / "video" / "P001" / "findings.jsonl"
-    real.parent.mkdir(parents=True)
-    real.write_text("", encoding="utf-8")  # simula saída real do I1 (sem desvios)
-    written = make_all(tmp_path, skip=["i1"])
-    assert "video_findings" not in written and "movement" not in written
-    assert real.read_text(encoding="utf-8") == ""
-    assert not (tmp_path / "video" / "P001" / "movement.parquet").exists()
-
-    full = tmp_path / "full"
-    make_all(full)
-    for rel in ("audio/P001/findings.jsonl", "anomaly/P001/findings.jsonl"):
-        assert (tmp_path / rel).read_bytes() == (full / rel).read_bytes()

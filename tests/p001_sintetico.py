@@ -1,8 +1,11 @@
-"""Gera os mocks (marco M1) do Integrante 1 (vídeo), do Integrante 2 (áudio e texto)
-e do Integrante 3 (anomalias) em outputs/.
+"""Dados sintéticos do cenário P001 para os testes (fixture ``mocks_dir`` do conftest).
 
-TODOS OS DADOS GERADOS AQUI SÃO FICTÍCIOS. Servem só para o pipeline rodar
-de ponta a ponta antes dos módulos reais. Marcação:
+Nasceram como os mocks do marco M1 (antes ``scripts/make_mocks.py``), que deixaram
+o pipeline rodar de ponta a ponta antes dos módulos reais. Com os quatro módulos
+prontos, não geram mais nada em outputs/: servem só aos testes da fusão, do
+dashboard, do e-mail e do ``scripts/e2e_p001.py``, sempre em pasta temporária.
+
+TODOS OS DADOS GERADOS AQUI SÃO FICTÍCIOS. Marcação:
 - Findings: ``description`` começa com "[MOCK]", ``model.name`` começa com
   "mock-" e ``evidence.mock`` = true;
 - movement.parquet: metadados do arquivo ``mock=true`` (as colunas seguem o plano);
@@ -12,17 +15,10 @@ Os horários seguem o cenário P001 do plano v5, a partir do demo_reference e
 dos demo_offset de data/patients.yaml. Os Findings da regra crítica
 (indicador vocal + termo respiratório + queda de SpO2) caem na mesma janela
 de 30 min.
-
-Uso:
-    python -m scripts.make_mocks [--out outputs] [--patients data/patients.yaml] [--skip i1 ...]
-
-Use ``--skip i1`` depois de rodar o módulo de vídeo real, para não sobrescrever
-outputs/video/P001/ (findings.jsonl e movement.parquet reais).
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import random
 import uuid
@@ -36,7 +32,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from contracts.finding import Finding, ModelInfo, write_findings
-from contracts.patients import DEFAULT_PATIENTS_PATH, REPO_ROOT, PatientsFile, load_patients
+from contracts.patients import DEFAULT_PATIENTS_PATH, PatientsFile, load_patients
 
 PATIENT = "P001"
 MOCK_PREFIX = "[MOCK] "
@@ -301,63 +297,35 @@ def anomaly_findings_mock(pf: PatientsFile, ids: _Ids, movement: pd.DataFrame) -
     ]
 
 
-# --------------------------------------------------------------------------- main
+# --------------------------------------------------------------------------- geração
 
 
-OWNERS = ("i1", "i2", "i3")
-
-
-def make_all(
-    out_dir: str | Path = "outputs",
-    patients_path: str | Path = DEFAULT_PATIENTS_PATH,
-    skip: tuple[str, ...] | list[str] = (),
-) -> dict[str, Path]:
-    """Gera os mocks (exceto os dos integrantes em ``skip``) e devolve {nome: caminho}."""
+def make_all(out_dir: str | Path, patients_path: str | Path = DEFAULT_PATIENTS_PATH) -> dict[str, Path]:
+    """Grava todos os dados sintéticos em ``out_dir`` (mesma estrutura de outputs/)
+    e devolve {nome: caminho}."""
     out = Path(out_dir)
-    if not out.is_absolute():
-        out = REPO_ROOT / out
     pf = load_patients(patients_path)
     ids = _Ids(seed=2026)
 
+    # Os IDs são gerados sempre na mesma ordem: a saída é idêntica a cada execução.
     movement = movement_mock(pf)
-    written: dict[str, Path] = {}
-
-    # Os IDs são gerados sempre na mesma ordem, para que pular um integrante não
-    # mude os IDs dos outros.
     video = video_findings_mock(pf, ids)
     audio = audio_findings_mock(pf, ids)
     text = text_findings_mock(pf, ids)
     anomaly = anomaly_findings_mock(pf, ids, movement)
 
-    if "i1" not in skip:
-        written["video_findings"] = write_findings(out / "video" / PATIENT / "findings.jsonl", video)
-        written["movement"] = write_movement_parquet(
-            movement,
-            out / "video" / PATIENT / "movement.parquet",
-            {"mock": "true", "generator": "scripts/make_mocks.py", "aviso": "Série FICTÍCIA (mock do Integrante 1)"},
-        )
-    if "i2" not in skip:
-        written["audio_findings"] = write_findings(out / "audio" / PATIENT / "findings.jsonl", audio)
-        transcript_path = out / "audio" / PATIENT / "transcript.json"
-        transcript_path.parent.mkdir(parents=True, exist_ok=True)
-        transcript_path.write_text(json.dumps(transcript_mock(pf), ensure_ascii=False, indent=2), encoding="utf-8")
-        written["transcript"] = transcript_path
-        written["text_findings"] = write_findings(out / "text" / PATIENT / "findings.jsonl", text)
-    if "i3" not in skip:
-        written["anomaly_findings"] = write_findings(out / "anomaly" / PATIENT / "findings.jsonl", anomaly)
+    written: dict[str, Path] = {}
+    written["video_findings"] = write_findings(out / "video" / PATIENT / "findings.jsonl", video)
+    written["movement"] = write_movement_parquet(
+        movement,
+        out / "video" / PATIENT / "movement.parquet",
+        {"mock": "true", "generator": "tests/p001_sintetico.py", "aviso": "Série FICTÍCIA (dados de teste)"},
+    )
+    written["audio_findings"] = write_findings(out / "audio" / PATIENT / "findings.jsonl", audio)
+    transcript_path = out / "audio" / PATIENT / "transcript.json"
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    transcript_path.write_text(json.dumps(transcript_mock(pf), ensure_ascii=False, indent=2), encoding="utf-8")
+    written["transcript"] = transcript_path
+    written["text_findings"] = write_findings(out / "text" / PATIENT / "findings.jsonl", text)
+    written["anomaly_findings"] = write_findings(out / "anomaly" / PATIENT / "findings.jsonl", anomaly)
     return written
-
-
-def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Gera os mocks FICTÍCIOS do M1 em outputs/.")
-    parser.add_argument("--out", default="outputs", help="pasta de saída (padrão: outputs)")
-    parser.add_argument("--patients", default=str(DEFAULT_PATIENTS_PATH), help="caminho do patients.yaml")
-    parser.add_argument("--skip", nargs="*", choices=OWNERS, default=[],
-                        help="não gera os mocks destes integrantes (ex.: --skip i1)")
-    args = parser.parse_args(argv)
-    for name, path in make_all(args.out, args.patients, args.skip).items():
-        print(f"{name:18s} {path}")
-
-
-if __name__ == "__main__":
-    main()

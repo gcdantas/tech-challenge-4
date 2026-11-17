@@ -1,8 +1,9 @@
 # Pacientes SINTÉTICOS da demonstração técnica (responsável: I4).
 #
 # Os dados de cada paciente vêm de fontes distintas (vídeos dos datasets
-# públicos REHAB24-6 e Charades, PhysioNet, notas escritas pela equipe) e foram
-# associados apenas para a demonstração técnica. Nenhum paciente aqui é uma
+# públicos REHAB24-6 e Charades, consultas gravadas e notas escritas pela
+# equipe, vitais e prescrições do simulador do I3) e foram associados apenas
+# para a demonstração técnica. Nenhum paciente aqui é uma
 # pessoa real internada. Vídeos: python -m data.download_rehab24 e
 # python -m data.download_charades.
 #
@@ -13,8 +14,7 @@
 # timestamp_start / timestamp_end (e o timestamp do movement.parquet).
 #
 # kind: video_physio | video_bed | audio | note | vitals | prescriptions
-# path: caminho relativo à raiz do repositório; null = ainda não definido.
-# Versão provisória feita pelo I1 para destravar o M1; formato a confirmar com o I4.
+# path: caminho relativo à raiz do repositório; null = sem arquivo (gerado pelo simulador).
 
 demo_reference: "2026-11-03T10:00:00-03:00"
 
@@ -48,9 +48,9 @@ patients:
         demo_offset: 2400       # 10:40:00
       vitais:
         kind: vitals
-        path: null              # registro do PhysioNet: a definir pelo I3
+        path: null              # sintéticos: simulador do I3 (config/simulator.yaml)
         demo_offset: 0
       prescricoes:
         kind: prescriptions
-        path: null              # fonte das prescrições: a definir pelo I3 (critério do M1)
+        path: null              # sintéticas: simulador do I3 (config/simulator.yaml)
         demo_offset: 0
