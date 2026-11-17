@@ -103,8 +103,8 @@ for err in loaded.errors:
 df = findings_dataframe(loaded.findings)
 if not df.empty and df["mock"].any():
     st.warning(
-        "Há Findings FICTÍCIOS (mocks do M1) na tela. Gere-os de novo com "
-        "`python -m scripts.make_mocks`."
+        "Há Findings FICTÍCIOS (marcados como mock) na tela. Rode o módulo "
+        "dono para trocá-los pelas saídas reais (README, seção 6.3)."
     )
 
 # --- Alertas ------------------------------------------------------------------
@@ -138,7 +138,8 @@ st.caption(
 # --- Linha do tempo -----------------------------------------------------------
 st.subheader("Linha do tempo multimodal")
 if df.empty:
-    st.info("Nenhum Finding encontrado em outputs/. Rode `python -m scripts.make_mocks`.")
+    st.info("Nenhum Finding encontrado em outputs/. Rode os módulos (README, seções 7.3, 8.5 e 9.5) "
+            "ou envie um arquivo na aba \"Enviar arquivo\".")
 else:
     tl = df.copy()
     # Eventos pontuais ganham 30 s de largura só para aparecer no gráfico.

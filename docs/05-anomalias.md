@@ -72,7 +72,7 @@ O simulador gera o histórico de admissão (pedidos que começam 72 h antes da d
 
 O simulador gera uma série no mesmo formato do `movement.parquet` do I1 (`centroid_x`, `centroid_y`, `torso_angle`, `velocidade`, `in_bed`). O paciente fica deitado e se reposiciona de tempos em tempos, como a equipe faz na internação. Nos eventos de saída do leito, a posição vai para fora do leito com uma rampa de 20 s.
 
-Quando existe um `movement.parquet` real, ele é usado. Se o clipe for curto (menos de 10 min), a série real é estendida com a simulada, e isso fica registrado em `composicao_movimento.json`. Se o parquet tiver `mock: true` nos metadados, o Finding leva `mock: true` na evidência.
+Quando existe um `movement.parquet` real, ele é usado. Como o clipe é curto (30 s), a série ganha antes dele um trecho simulado com o paciente deitado e parado, sem eventos, desde o início da série até o começo do clipe; o clipe entra sem alteração e a série acaba com ele. A composição fica registrada em `composicao_movimento.json`. Se o parquet tiver `mock: true` nos metadados, o Finding leva `mock: true` na evidência.
 
 ### 2.5 Tempo
 
@@ -132,7 +132,7 @@ Olha os seis sinais juntos e pega combinações incomuns, mesmo quando nenhum si
 
 Tipo gerado: `padrao_multivariado`, com `source = vitals`.
 
-Limitação conhecida: em pacientes estáveis ele gera cerca de 5 % de falso alarme. Por isso ele é um complemento dos limites e do z-score, não o detector principal.
+Limitação conhecida: o recall é baixo (só 7 dos 16 eventos de deterioração multivariada e nenhum evento de um sinal só, seção 7). Falso alarme não é o problema: na avaliação, nenhum Finding dele ficou sem evento correspondente, e o teste automatizado aceita no máximo 1 paciente estável em 10 com Finding. Por isso ele é um complemento dos limites e do z-score, não o detector principal.
 
 ## 4. Detector de prescrições
 
@@ -226,7 +226,7 @@ Exemplos de séries com as anomalias marcadas:
 ### Como ler esses números
 
 - Os dados são sintéticos e o mesmo projeto gera os eventos e mede a detecção. Por isso prescrição e movimentação dão 100 %: as regras fazem o que foram escritas para fazer. Isso não prova que funcionariam num hospital real.
-- O ponto fraco é a deterioração multivariada: todos os 7 eventos perdidos nos vitais são desse tipo. Com intensidade 0,3 vezes o padrão o sistema não acha nada, com 0,6 acha cerca de 30 % e a partir de 1,0 acha tudo.
+- O ponto fraco é a deterioração multivariada: todos os 7 eventos perdidos nos vitais são desse tipo. Com intensidade 0,3 vezes o padrão o sistema não acha nada, com 0,6 acha 30 % (40 % com o Isolation Forest junto) e a partir de 1,0 acha tudo.
 - O Isolation Forest só detecta a deterioração multivariada e mesmo assim com recall baixo (7 dos 16 eventos, ou 43,8 %). Ele entra como complemento.
 - Na avaliação os eventos de um mesmo paciente não se sobrepõem (existe uma folga entre eles). Em dados reais isso seria bem mais bagunçado.
 
@@ -236,7 +236,7 @@ Exemplos de séries com as anomalias marcadas:
 - Dados sintéticos, sem ruído de uso real (eletrodo solto, paciente falando, medicação, etc.).
 - O catálogo de medicamentos tem 7 itens e as doses não vêm de bula.
 - A suspensão abrupta usa 30 min só para a demonstração. Num uso real esse tempo seria bem maior.
-- O Isolation Forest tem cerca de 5 % de falso alarme em paciente estável.
+- O Isolation Forest tem recall baixo: acha só parte da deterioração multivariada e nada dos eventos de um sinal só.
 - A movimentação depende da qualidade da pose do I1. Se a pessoa não é detectada por mais de 3 s, hoje conta como saída do leito.
 
 ## 9. Integração com os outros módulos

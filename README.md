@@ -9,19 +9,16 @@ temporal. **O sistema sinaliza risco e apoia a equipe; a decisão é clínica.**
 O paciente sintético P001 tem dados que vêm de fontes distintas, associadas só
 para a demonstração técnica.
 
-> **Estado atual (15/11/2026):**
-> - **Vídeo (Integrante 1):** implementado e rodando com vídeos reais de datasets públicos: REHAB24-6 na fisioterapia e Charades no leito. O grupo decidiu não gravar vídeos próprios.
-> - **Áudio e texto (Integrante 2):** implementado e validado com Azure real, seis consultas sintéticas, baseline do mesmo locutor e revisão humana.
-> - **Anomalias (Integrante 3):** implementado com dados sintéticos (vitais e prescrições) e o `movement.parquet` real do vídeo, avaliado em 505 pacientes simulados.
-> - **Integração (Integrante 4):** contrato, fusão com regras e combinação ponderada, três níveis de alerta com deduplicação, e-mail no alerta crítico (testado com conta real), dashboard com uma aba por fonte e upload que chama a análise de cada módulo.
->
-> Detalhes em [Status por integrante](#3-status-por-integrante).
+> **Estado atual (16/11/2026): projeto concluído.** Os quatro módulos estão
+> implementados e integrados, e o cenário P001 foi testado de ponta a ponta com
+> as saídas reais de todos eles (seção 10.1). O que cada integrante entregou
+> está na [seção 3](#3-entregas-por-integrante).
 
 ## Sumário
 
 1. [Introdução e problema (Integrante 4)](#1-introdução-e-problema-integrante-4)
 2. [Responsabilidades](#2-responsabilidades)
-3. [Status por integrante](#3-status-por-integrante)
+3. [Entregas por integrante](#3-entregas-por-integrante)
 4. [Estrutura do repositório](#4-estrutura-do-repositório)
 5. [Instalação](#5-instalação)
 6. [Arquitetura e fluxo multimodal (Integrante 4)](#6-arquitetura-e-fluxo-multimodal-integrante-4)
@@ -100,7 +97,10 @@ Fonte: plano do grupo, *Tech Challenge Fase 4 — Divisão do trabalho v5*.
 
 O plano previa o relatório técnico em capítulos separados em `docs/` (01 a 06).
 Aqui cada capítulo é uma seção deste README, e o PDF consolidado da entrega
-é gerado a partir dele:
+(`docs/relatorio_tecnico.pdf`) é gerado a partir dele com
+`python -m scripts.relatorio_pdf`. Os Integrantes 2 e 3 mantêm também uma versão
+mais detalhada do próprio capítulo (`docs/04-audio.md` e `docs/05-anomalias.md`),
+que fica no Git mas não entra no PDF:
 
 | Capítulo do plano | Seção |
 |---|---|
@@ -119,7 +119,7 @@ Regras que valem para todos:
 - **Finding × alerta.** Os Integrantes 1, 2 e 3 produzem Findings; só o
   Integrante 4 emite alertas, depois da fusão.
 - **Mudança no schema** só com PR marcando os outros três integrantes.
-- **Linha "Extra"** do plano só depois do M3.
+- **Linha "Extra"** do plano fora do escopo da entrega (seção 10.4).
 
 **Decisão do grupo (10/11/2026).** O plano previa vídeos gravados pela equipe.
 O grupo decidiu não gravar e usar vídeos prontos de datasets públicos:
@@ -128,90 +128,16 @@ O grupo decidiu não gravar e usar vídeos prontos de datasets públicos:
 
 Detalhes na seção 7.2.
 
-## 3. Status por integrante
+## 3. Entregas por integrante
 
-Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
+| Integrante | O que entregou | Seção |
+|---|---|---|
+| Integrante 1: vídeo | Download reproduzível dos vídeos (REHAB24-6 e Charades); pose com YOLOv8-pose, ângulos, repetições e as regras `amplitude_incompleta` e `postura_fora_padrao`, com limiares calibrados no REHAB24-6; OpenPose via OpenCV DNN e comparação com o YOLOv8-pose contra o gabarito da captura de movimento; leito com YOLOv8 (pessoa, cama e zona da borda) → `movement.parquet` e rótulo de saída do leito para o Integrante 3; relatório HTML, clipes e quadros anotados; avaliação contra as anotações dos datasets; figuras do relatório e pacote para a edição do vídeo | 7 |
+| Integrante 2: áudio e texto | Seis consultas gravadas e um baseline do mesmo locutor; transcrição com Azure Speech to Text; sentimento com Azure AI Language e termos críticos com negação; duas notas de evolução sintéticas com comparação entre notas; indicador experimental de alteração vocal contra a linha de base do próprio paciente; cache das respostas; métricas com revisão humana | 8 |
+| Integrante 3: anomalias | Simulador de vitais, prescrições e movimentação em fluxo; detectores com `update(ponto)` (limites clínicos, z-score robusto, Isolation Forest, regras de prescrição e de movimentação); série de movimentação composta a partir do `movement.parquet` real; avaliação em 505 pacientes simulados, com gráficos | 9 |
+| Integrante 4: integração | Contrato Finding e `patients.yaml`; fusão com regra crítica, combinação ponderada, teto de nível e deduplicação com cooldown; e-mail SMTP no alerta crítico com contingência `.eml`; dashboard com uma aba por fonte e upload que chama o módulo dono; teste ponta a ponta do P001; seções 1, 6 e 10 e o PDF consolidado | 1, 6 e 10 |
 
-### Critérios do M1 (pipeline roda com mocks)
-
-| Critério | Status |
-|---|---|
-| O Streamlit inicia | ✅ |
-| `patients.yaml` carrega com os `demo_offset` | ✅ |
-| Todos os mocks passam na validação Pydantic | ✅ (`tests/test_mocks_schema.py`) |
-| Um Finding de cada origem, incluindo `text`, aparece na linha do tempo | ✅ (`tests/test_app_smoke.py`) |
-| A fonte das prescrições está decidida | ✅ sintética, gerada pelo simulador (seção 9.2) |
-
-### Integrante 1: vídeo
-
-| Item | Status |
-|---|---|
-| Mock: `movement.parquet` e `findings.jsonl` com 2 eventos | ✅ (substituído pelas saídas reais do P001) |
-| Vídeos de datasets públicos no lugar de gravações: download reproduzível | ✅ (`data/download_rehab24.py`, `data/download_charades.py`) |
-| Pose com YOLOv8-pose, ângulos e amplitude por repetição | ✅ (REHAB24-6: 122 de 128 repetições de agachamento encontradas) |
-| Regras dos 2 eventos com limiares em `config/video.yaml` | ✅ limiares de perfil calibrados no REHAB24-6 (seção 7.6): F1 de perfil de 0,22 para 0,55 |
-| OpenPose via OpenCV DNN com frames anotados (obrigatório) | ✅ (20 quadros no vídeo de fisioterapia do P001) |
-| YOLOv8 pessoa + leito, zona da borda, `movement.parquet` com `in_bed` | ✅ (Charades SSP8C: leito detectado; saída do leito aos 18 s) |
-| `demo_offset` nos Findings e no parquet; P001 apontando para os vídeos reais | ✅ |
-| Relatório automático HTML e clipes dos desvios | ✅ |
-| Métricas (P/R/F1, FPS) e avaliação contra as anotações dos datasets | ✅ (`notebooks/rehab24/`, `notebooks/charades/`) |
-| Rótulos de saída do leito para o Integrante 3 | ✅ `data/labels/SSP8C.yaml`, a partir da anotação do Charades → `bed_exit_labels.json` |
-| Documentação técnica (seção 7) | ✅ |
-| Decidir com o grupo: amplitude relativa à própria pessoa e evento de flexão excessiva (seção 7.14) | ⬜ |
-| Desejável (Integrante 1): comparação OpenPose × YOLOv8-pose | ✅ com o gabarito da captura de movimento do REHAB24-6 (seção 7.7) |
-| Exemplos de anomalias detectadas no relatório (enunciado: "exemplos de anomalias detectadas") | ✅ figuras em `docs/img/video/` (seções 7.7, 7.8 e 7.12) |
-| Pacote de clipes e quadros anotados para a edição do vídeo (Integrante 4) | ✅ `python -m scripts.material_video --pacote` → `outputs/pacote_video/` (seção 7.12) |
-| Trecho do vídeo de entrega, bloco 1:00–3:30 do roteiro | ⬜ gravação de tela pelo Integrante 1 |
-| Entregar o pacote do vídeo ao Integrante 4 | ⬜ o pacote não vai para o Git: enviar a cópia gerada ou combinar que o Integrante 4 gere a dele (seção 7.12) |
-| Confirmar com o Integrante 3 as unidades do `movement.parquet` e o comportamento quando a pessoa não é detectada | ⬜ proposta na seção 7.8 |
-| M4: cópia de segurança dos arquivos da demo (vídeos, gabarito, `outputs/video/P001/`) | ⬜ |
-| M5: revisar a seção 7 no relatório consolidado e testar o README num ambiente limpo | ⬜ |
-
-### Integrante 2: áudio e texto clínico
-
-| Item | Status |
-|---|---|
-| Mock: `transcript.json`, Findings de áudio e de texto | ✅ (provisório, feito pelo Integrante 1) |
-| Recursos Azure Speech e AI Language, credenciais por canal privado, seção de ambiente no README | ✅ recursos F0 configurados e execução real validada |
-| Gravar 6–8 consultas simuladas (normal, cansado, fala arrastada, ofegante) | ✅ seis consultas e um baseline neutro do mesmo locutor |
-| Transcrição Azure Speech to Text (pt-BR) com timestamps | ✅ executada no Azure real e revisada por uma pessoa |
-| Sentimento e termos críticos (Azure AI Language + regex) | ✅ executados no Azure real nas consultas e nas notas sintéticas |
-| Notas de evolução sintéticas do P001 em `data/notes/`, Findings `source: text`, `notes.json` | ✅ duas notas e comparação temporal implementadas |
-| Indicador experimental de alteração vocal (taxa de fala, pausas, pitch, jitter, shimmer; z-score contra a linha de base do próprio paciente) | ✅ avaliado nas seis consultas sintéticas; sem validade clínica |
-| Cache das respostas Azure em `outputs/audio/cache/` | ✅ cache por conteúdo e parâmetros, sem persistir chaves |
-| `analyze()` e CLI em `modules/audio/` | ✅ arquivo individual e cenário P001, com mock explícito |
-| Métricas (WER, acerto dos termos, concordância do indicador) e seção 8 deste README | ✅ medidas em amostra sintética revisada, com limitações declaradas |
-| Desejável (Integrante 2): Text Analytics for Health | ⬜ |
-
-### Integrante 3: anomalias e simulador
-
-| Item | Status |
-|---|---|
-| Mock: dessaturação, dose duplicada, saída do leito | ✅ (provisório, feito pelo Integrante 1; substituído pelas saídas reais) |
-| Decidir a fonte das prescrições (critério do M1) | ✅ sintética, gerada pelo simulador; MIMIC-IV Demo e BIDMC não foram usados (seção 9.2) |
-| Simulador em fluxo (`config/simulator.yaml`) | ✅ |
-| Detectores com `update(ponto) -> list[Finding]`: vitais, prescrições, movimentação | ✅ |
-| Série de movimentação estendida a partir do `movement.parquet` real (Charades SSP8C) | ✅ |
-| Anomalias injetadas, métricas, `series_flagged.parquet`, gráficos e seção 9 deste README | ✅ |
-| Desejável (Integrante 3): NEWS2 | ⬜ |
-
-### Integrante 4: integração
-
-| Item | Status |
-|---|---|
-| Contrato Finding (Pydantic + fixtures, incluindo `source: text`) | 🟡 provisório (Integrante 1); falta aprovação dos quatro |
-| `patients.yaml` com `demo_offset` por artefato | 🟡 provisório (Integrante 1); formato a confirmar |
-| Esqueleto do repositório | 🟡 provisório (Integrante 1) |
-| Streamlit com linha do tempo | 🟡 esqueleto (Integrante 1) |
-| Fusão: regra crítica do P001 e `alerts.jsonl` | 🟡 mínima (Integrante 1) |
-| Combinação ponderada dos scores em `config/fusion.yaml` | ✅ pesos por fonte e limiares por nível (seção 6.4); pesos e limiares a validar com o grupo |
-| Três níveis com deduplicação e cooldown por paciente e tipo | ✅ cooldown por paciente e tipo de alerta, com escalonamento (seção 6.4) |
-| E-mail SMTP no alerta crítico (obrigatório), `config/alerts.yaml`, `email_sent_at`, contingência `.eml` | ✅ `app/notify.py`, um envio por alerta (seção 6.4); testado com conta Gmail real (senha de app) em 14/11 |
-| Upload de vídeo, áudio e nota no Streamlit; chamada a `analyze()` dos Integrantes 1 e 2; laço com o simulador do Integrante 3 | 🟡 upload e análise pelo módulo dono prontos (`app/ingest.py`, seção 6.4); o dashboard lê o `findings.jsonl` do I3; falta a reprodução em fluxo com o `fluxo.py` |
-| Dashboard com frames do Integrante 1, transcrição e notas do Integrante 2, séries do Integrante 3 | ✅ abas por modalidade; a aba do Integrante 3 lê o `series_flagged.parquet` assim que ele existir |
-| Teste ponta a ponta do P001 com os módulos reais | ✅ saídas reais dos quatro módulos em 16/11: alerta crítico pela regra às 10:45:50 (`scripts/e2e_p001.py`, seção 10.1) |
-| Seções 1, 6 e 10 deste README, PDF consolidado a partir dele, vídeo, submissão | 🟡 seções 1, 6 e 10 escritas; PDF gerado por `python -m scripts.relatorio_pdf`; faltam o vídeo e a submissão |
-| Desejáveis (Integrante 4): confirmação de leitura ("Ciente"), Azure Blob Storage, Docker Compose | ⬜ |
+Os desejáveis do plano que não foram feitos estão na seção 10.4.
 
 ## 4. Estrutura do repositório
 
@@ -219,28 +145,28 @@ Legenda: ✅ feito · 🟡 provisório ou parcial · ⬜ pendente
 contracts/            schema Finding, loader do patients.yaml (Integrante 4)
   fixtures/           um Finding de exemplo por origem
 modules/video/        análise de vídeo (Integrante 1): fisioterapia, leito, OpenPose, relatório, métricas
-modules/audio/        áudio e texto clínico (Integrante 2) - ainda vazio
-modules/anomaly/      anomalias e simulador (Integrante 3): vitais, prescrições, movimentação, avaliação
+modules/audio/        áudio e texto clínico (Integrante 2): Azure Speech e Language, termos críticos, indicador vocal, cache, métricas
+modules/anomaly/      anomalias e simulador (Integrante 3): vitais, prescrições, movimentação, fluxo, avaliação
 app/                  Streamlit, upload, fusão, alertas e e-mail (Integrante 4)
-config/               video.yaml (limiares do vídeo), fusion.yaml (fusão), alerts.yaml (e-mail), anomaly.yaml, simulator.yaml e avaliacao.yaml (anomalias)
+config/               video.yaml (vídeo), audio.yaml (áudio e texto), anomaly.yaml, simulator.yaml e avaliacao.yaml (anomalias), fusion.yaml (fusão), alerts.yaml (e-mail)
 data/
   patients.yaml       pacientes sintéticos e demo_offset por artefato
   download_weights.py baixa os pesos dos modelos para weights/
   download_rehab24.py baixa os vídeos de fisioterapia (REHAB24-6)
   download_charades.py baixa o vídeo do leito (Charades)
   remote_zip.py       leitura parcial de zips remotos (usada pelos downloads)
-  labels/             rótulos manuais dos vídeos (modelo: video.example.yaml)
-  notes/              notas de evolução sintéticas (Integrante 2) - vazio
+  labels/             rótulos dos vídeos (SSP8C.yaml: saída do leito; modelo: video.example.yaml)
+  notes/              notas de evolução sintéticas do P001 (Integrante 2)
   video/              vídeos dos datasets (fora do Git)
-scripts/make_mocks.py gera os mocks fictícios do M1
+  audio/              consultas gravadas pela equipe (fora do Git; criada pelo Integrante 2)
 scripts/e2e_p001.py   confere o cenário P001 com as saídas em outputs/ (real ou mock por fonte)
 scripts/relatorio_pdf.py gera o PDF consolidado do relatório a partir deste README
 scripts/material_video.py figuras do README e pacote do vídeo para o Integrante 4
 notebooks/rehab24/    avaliação e calibração do vídeo no REHAB24-6 (config da abdução, scripts)
 notebooks/charades/   conferência da série do leito com a anotação do Charades
 notebooks/comparacao/ comparação OpenPose × YOLOv8-pose com o gabarito do REHAB24-6
-docs/                 enunciado oficial (PDF), figuras do README (img/), 05-anomalias.md e relatorio_tecnico.pdf (relatório consolidado)
-tests/                pytest
+docs/                 enunciado oficial (PDF), figuras do README (img/), 04-audio.md e 05-anomalias.md (capítulos detalhados dos Integrantes 2 e 3) e relatorio_tecnico.pdf (relatório consolidado)
+tests/                pytest; p001_sintetico.py gera os dados fictícios do P001 usados nos testes (seção 6.3)
 outputs/              saídas geradas (fora do Git)
 weights/              pesos dos modelos (fora do Git)
 .env.example          modelo do .env (segredos)
@@ -272,11 +198,11 @@ OpenPose.
 | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | `.env` | Azure Speech to Text (Integrante 2) |
 | `AZURE_LANGUAGE_KEY`, `AZURE_LANGUAGE_ENDPOINT` | `.env` | Azure AI Language (Integrante 2) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `ALERT_EMAIL_FROM`, `ALERT_EMAIL_TO` | `.env` | e-mail do alerta crítico (Integrante 4); `ALERT_EMAIL_TO` aceita vários destinatários separados por vírgula |
+| `TC_AUDIO_ALLOW_AZURE` | `.env` (padrão `0`) | `1` autoriza a interface `analyze()` e o upload a chamar o Azure quando a resposta não está no cache (seção 6.5) |
 | `TC_OUTPUTS_DIR` | opcional | troca a pasta `outputs/` (usado nos testes) |
 | `TC_PATIENTS_PATH` | opcional | troca o `data/patients.yaml` (usado nos testes) |
 
-Os nomes das variáveis do `.env` são provisórios: os Integrantes 2 e 4 definem
-os finais.
+O `.env.example` traz todas elas; o `.env` nunca vai para o Git.
 
 ### GPU (opcional)
 
@@ -357,13 +283,13 @@ linha). Exemplo real do vídeo de fisioterapia do P001 (a pose vem do YOLOv8n-po
 
 Funções úteis: `read_findings(path)`, `write_findings(path, findings)`.
 
-#### `type` usados até agora (a confirmar pelo grupo)
+#### `type` emitidos por cada módulo
 
 | `source` | `type` | Quem emite |
 |---|---|---|
 | `video` | `amplitude_incompleta`, `postura_fora_padrao` | Integrante 1 |
-| `audio` | `termo_critico`, `indicador_vocal_alterado` | Integrante 2 |
-| `text` | `termo_critico` | Integrante 2 |
+| `audio` | `termo_critico`, `sentimento_muito_negativo`, `indicador_vocal_alterado` | Integrante 2 |
+| `text` | `termo_critico`, `sentimento_muito_negativo` | Integrante 2 |
 | `vitals` | `dessaturacao`, `taquicardia`, `bradicardia`, `taquipneia`, `bradipneia`, `hipotensao`, `hipertensao`, `hipotensao_diastolica`, `hipertensao_diastolica`, `febre`, `hipotermia`, `desvio_<sinal>`, `padrao_multivariado` | Integrante 3 |
 | `prescription` | `dose_fora_da_faixa`, `dose_duplicada`, `aumento_abrupto_dose`, `suspensao_abrupta` | Integrante 3 |
 | `movement` | `saida_do_leito`, `imobilidade_prolongada` | Integrante 3 |
@@ -380,7 +306,7 @@ Como a fusão usa os `type` do Integrante 3 (combinado em 15/11):
   todos os Findings são mantidos. A deduplicação por paciente e tipo junta os
   do mesmo nível no alerta anterior, e um nível mais alto gera alerta novo.
 
-#### `data/patients.yaml` (formato provisório)
+#### `data/patients.yaml`
 
 ```yaml
 demo_reference: "2026-11-03T10:00:00-03:00"
@@ -399,10 +325,11 @@ patients:
 - Cada módulo grava `instante = demo_reference + demo_offset + tempo interno da mídia`
   (`PatientsFile.demo_time()`).
 
-O P001 tem hoje:
-- fisioterapia (0 s) e leito (600 s), com vídeos reais;
-- consulta (1800 s), nota anterior (−86400 s) e nota recente (2400 s), ainda sem arquivo;
-- vitais e prescrições (0 s, `path: null`).
+O P001 tem:
+- fisioterapia (0 s) e leito (600 s): vídeos dos datasets públicos, baixados pelos scripts;
+- consulta (1800 s): WAV gravado pela equipe, fora do Git (seção 8.1);
+- nota anterior (−86400 s) e nota recente (2400 s): `data/notes/`, no Git;
+- vitais e prescrições (0 s, `path: null`): gerados pelo simulador do Integrante 3 (seção 9.2).
 
 #### Interface dos módulos
 
@@ -413,88 +340,31 @@ analyze(input, patient_id) -> list[Finding]
 python -m modules.<modulo>.run --input ... --patient P001 --out findings.jsonl
 ```
 
-### 6.3 Mocks (M1)
+### 6.3 Dados sintéticos de teste e marcação de mock
 
-Os mocks deixam o pipeline rodar de ponta a ponta antes dos módulos reais. São
-**todos fictícios** e gerados por um único script:
+No início (marco M1), mocks fictícios de cada integrante deixaram o pipeline
+rodar de ponta a ponta antes dos módulos reais. Hoje os quatro módulos são
+reais e `outputs/` só recebe as saídas deles. Dados fictícios continuam em dois
+lugares, sempre marcados:
 
-```powershell
-python -m scripts.make_mocks              # gera tudo em outputs/
-python -m scripts.make_mocks --skip i1    # preserva as saídas reais de vídeo (use depois de rodar o módulo de vídeo)
-```
+| Onde | Para quê | Grava em `outputs/`? |
+|---|---|---|
+| `tests/p001_sintetico.py` | fixture `mocks_dir` dos testes: um Finding de cada origem no roteiro do P001, um `movement.parquet` e um `transcript.json`, idênticos a cada execução | não; só em pasta temporária |
+| `python -m modules.audio.run --scenario --patient P001 --mock` | demonstração do Integrante 2 sem Azure, a partir de uma transcrição fictícia (seção 8.5) | sim, mas nunca por cima de uma saída real |
 
-`--skip` aceita `i1`, `i2` e `i3` (Integrantes 1, 2 e 3).
-
-#### Como um mock é marcado
-
+**Como um mock é marcado**
 - **Findings:** `description` começa com `[MOCK]`, `model.name` começa com
-  `mock-` (`mock-i1`, `mock-i2`, `mock-i3`) e `evidence.mock = true`.
-- **`movement.parquet`:** metadado de arquivo `mock=true`; as colunas seguem o
-  plano sem alteração. A série real grava `mock=false`.
-- **`transcript.json`:** campo `"mock": true`.
+  `mock-` e `evidence.mock = true`.
+- **`movement.parquet`:** metadado de arquivo `mock=true`; o vídeo real grava
+  `mock=false`. Se a série for mock, o Integrante 3 propaga `evidence.mock` aos
+  Findings de movimentação.
+- **`transcript.json` e `notes.json`:** campo `"mock": true`.
 - **Streamlit:** mostra um aviso sempre que há Finding fictício na tela.
+- **`scripts/e2e_p001.py`:** informa, por fonte, se a saída é real, mock ou mista.
 
-A saída é determinística: mesmos IDs e valores a cada execução.
-
-#### Linha do tempo do P001
-
-Referência `2026-11-03T10:00-03:00`, com os `demo_offset` do `patients.yaml`.
-Mapeia os passos do cenário P001 do plano.
-
-| Horário | Origem | Evento | Severidade (score) | Fonte hoje | Passo do cenário |
-|---|---|---|---|---|---|
-| 10:00:26–10:01:48 | `video` | 9 `amplitude_incompleta` e 7 `postura_fora_padrao` (seção 7.12) | low a high | **real** (REHAB24-6 PM_105) | 1 |
-| 10:10:18 | `movement` | `saida_do_leito` | medium (0,70) | **real** (Integrante 3), sobre a série real do leito | 2 |
-| 10:20:00 | `prescription` | `dose_duplicada` (dipirona 1000 mg, 2×) | high (0,75) | **real** (Integrante 3, dado sintético) | 5 |
-| 10:30:30–10:31:30 | `audio` | `indicador_vocal_alterado` (z-scores em `evidence.zscores`) | medium (0,68) | mock | 3 |
-| 10:31:15–10:31:19 | `audio` | `termo_critico` "falta de ar" | medium (0,80) | mock | 3 |
-| 10:40:00 | `text` | `termo_critico` "dispneia aos esforços" (ausente na nota anterior) | medium (0,75) | mock | 4 |
-| 10:45:20–10:45:50 | `vitals` | `dessaturacao` (SpO2 87%, limite 90%) | high (0,87) | **real** (Integrante 3, dado sintético) | 5 |
-
-Os Findings da regra crítica (indicador vocal, termo respiratório e queda de
-SpO2) ficam entre 10:30 e 10:45, dentro da janela de 30 min. A fusão emite o
-alerta crítico às 10:48.
-
-#### Arquivos de cada mock
-
-**Integrante 1: `outputs/video/P001/`** (hoje substituídos pelas saídas reais)
-- `findings.jsonl`: dois eventos de fisioterapia inventados (10:00:12 e 10:00:31).
-- `movement.parquet`: 150 linhas a 5 Hz, de 10:10:00 a 10:10:29,8, com as
-  colunas `patient_id`, `timestamp` (com fuso -03:00), `centroid_x`,
-  `centroid_y`, `torso_angle`, `velocidade` e `in_bed` (bool).
-  - O paciente fica deitado e parado no leito (tronco ~86° da vertical) até 14,4 s.
-  - Depois senta, levanta e caminha para fora.
-  - `in_bed` vira `false` em 10:10:18,0, o mesmo instante do vídeo real do leito e do `saida_do_leito` do mock do Integrante 3.
-
-**Integrante 2: `outputs/audio/P001/` e `outputs/text/P001/`**
-- `audio/P001/findings.jsonl`: `termo_critico` ("falta de ar", com o trecho em
-  `evidence.segment_text`) e `indicador_vocal_alterado` (linha de base nos
-  primeiros 30 s; z-scores de taxa de fala, pausas, pitch, jitter e shimmer).
-- `audio/P001/transcript.json`, escrito à mão. Formato provisório (o Integrante 2 define o final):
-  ```json
-  {"mock": true, "aviso": "...", "patient_id": "P001", "audio": "data/audio/P001_consulta.wav",
-   "language": "pt-BR",
-   "segments": [{"start": 75.0, "end": 79.0,
-                 "timestamp_start": "2026-11-03T10:31:15-03:00", "timestamp_end": "...",
-                 "text": "Ontem à noite senti muita falta de ar ...", "sentiment": "negative",
-                 "critical_terms": [{"term": "falta de ar", "offset": 26, "length": 11}]}]}
-  ```
-- `text/P001/findings.jsonl`: `termo_critico` "dispneia aos esforços" na nota
-  recente (`evidence.note`, `evidence.ausente_na_anterior`).
-
-**Integrante 3: `outputs/anomaly/P001/findings.jsonl`**
-- `dessaturacao` (`vitals`), `dose_duplicada` (`prescription`) e
-  `saida_do_leito` (`movement`).
-
-#### Como trocar um mock pelo módulo real
-
-1. O módulo real grava **no mesmo caminho e no mesmo formato** do mock. O
-   Streamlit e a fusão leem `outputs/<video|audio|text|anomaly>/<paciente>/findings.jsonl`
-   sem saber se é mock.
-2. A partir daí, regenere os mocks dos outros com `--skip`. O vídeo já fez
-   isso: `python -m scripts.make_mocks --skip i1`.
-3. Rode `python -m pytest`. Os testes de mocks usam pasta temporária, mas o
-   `read_findings()` valida qualquer saída real contra o contrato.
+Com os dados sintéticos de teste, a fusão do P001 dá um alerta crítico pela
+regra às 10:48 e um alerta urgente `ponderado` às 10:20 (score 0,68), conferidos
+em `tests/test_p001_smoke.py`. O resultado com as saídas reais está na seção 10.1.
 
 ### 6.4 Aplicação, fusão e alertas
 
@@ -534,7 +404,7 @@ O que a aplicação faz:
 - Se o módulo falhar (pesos ausentes, WAV fora do formato, Azure não
   autorizado), a tela mostra o erro e o envio fica registrado com ele.
 - Vitais, prescrições e movimentação vêm do `findings.jsonl` que o módulo do
-  Integrante 3 grava; a reprodução em fluxo pelo `fluxo.py` ainda não está na tela.
+  Integrante 3 grava; a reprodução em fluxo pelo `fluxo.py` não faz parte da tela (seção 10.4).
 
 Fusão (`app/fusion.py`, parâmetros em `config/fusion.yaml`), por paciente e
 em três etapas:
@@ -586,12 +456,7 @@ dispararam o alerta, então os deduplicados não provocam e-mail repetido.
 Todo alerta traz `score`, a combinação ponderada dos seus Findings, usada para
 ordenar o dashboard dentro de cada nível.
 
-Com os mocks do M1, o P001 tem:
-- 1 alerta crítico às 10:48, pela regra (o termo da nota entra como deduplicado);
-- 1 alerta de atenção `ponderado` às 10:20, com vídeo, saída do leito e dose
-  duplicada (score 0,68).
-
-Formato provisório de cada linha do `alerts.jsonl`:
+Formato de cada linha do `alerts.jsonl`:
 
 ```json
 {"alert_id": "...", "patient_id": "P001", "level": "critico", "rule": "respiratorio_vocal_spo2",
@@ -621,7 +486,7 @@ E-mail do alerta crítico (`app/notify.py`, opções em `config/alerts.yaml`):
   `SMTP_PASSWORD` com a senha de app e `ALERT_EMAIL_TO` com quem recebe. As
   primeiras mensagens de uma conta nova podem cair no spam.
 
-Ainda não implementado (Integrante 4):
+Fora desta entrega (seção 10.4):
 - confirmação de leitura;
 - reprodução em fluxo das anomalias (`fluxo.py` do Integrante 3);
 - processamento incremental (hoje o `alerts.jsonl` é reescrito a cada execução).
@@ -638,9 +503,9 @@ Ainda não implementado (Integrante 4):
 **Azure é opcional nesta fase.** Em 15/11/2026 o professor orientou que o uso
 do Azure é opcional e que ferramentas open source ou vistas em aula também
 valem. O grupo manteve o Azure no áudio e no texto, porque o módulo já estava
-implementado e validado com ele. Quem não tem as chaves roda a demonstração
-pelo cache das respostas ou pelo modo mock marcado (seção 8.5); os demais
-módulos não dependem de nuvem.
+implementado e validado com ele. Sem as chaves, a demonstração usa as saídas
+já geradas pelo Integrante 2, o cache das respostas (só na máquina que o tem)
+ou o modo mock marcado (seção 8.5); os demais módulos não dependem de nuvem.
 
 Como o projeto usa o Azure:
 - **Recursos no nível gratuito (F0)**, criados pelo Integrante 2. A região e as
@@ -651,7 +516,10 @@ Como o projeto usa o Azure:
   interface `analyze()` e o upload do Streamlit exigem `TC_AUDIO_ALLOW_AZURE=1`
   ou a caixa marcada na tela. Sem isso, nada é cobrado.
 - **Cache das respostas** em `outputs/audio/cache/`, por conteúdo e parâmetros:
-  repetir a demonstração não gasta cota, e o cache não guarda chaves.
+  repetir a demonstração não gasta cota, e o cache não guarda chaves. Como
+  `outputs/` e os WAVs ficam fora do Git, e a chave do cache inclui o conteúdo
+  do áudio e a região e o endpoint do `.env`, o reaproveitamento só funciona na
+  máquina que tem o cache, os mesmos WAVs e o mesmo `.env`.
 - **Mock explícito:** a fixture offline do P001 é marcada como mock e nunca
   substitui uma saída real (seção 8.5).
 
@@ -740,7 +608,7 @@ python -m data.download_charades
 # P001 (cenário e demo_offset vêm do patients.yaml)
 python -m modules.video.run --patient P001 --input data/video/rehab24-6/PM_105-Camera18-30fps-transposed.mp4 data/video/charades/SSP8C.mp4
 python -m modules.video.openpose --patient P001 --max-frames 20 --input data/video/rehab24-6/PM_105-Camera18-30fps-transposed.mp4
-python -m scripts.make_mocks --skip i1   # mocks dos Integrantes 2 e 3 sem apagar o vídeo real
+# áudio e texto (seção 8.5) e anomalias (seção 9.5) gravam as próprias saídas; o dashboard junta tudo
 streamlit run app/streamlit_app.py
 ```
 
@@ -771,6 +639,7 @@ python -m modules.video.run --patient P001 --input data/video/charades/SSP8C.mp4
 ```
 
 O rótulo de saída do leito vem de `data/labels/SSP8C.yaml`, que já está no Git.
+Depois, o módulo de anomalias lê o `movement.parquet` (seção 9.5).
 
 **Integrante 4** (cerca de 250 MB de download, uns 2 minutos de processamento em CPU):
 
@@ -780,14 +649,12 @@ python -m data.download_rehab24 Ex6/PM_105-Camera18-30fps-transposed.mp4
 python -m data.download_charades
 python -m modules.video.run --patient P001 --input data/video/rehab24-6/PM_105-Camera18-30fps-transposed.mp4 data/video/charades/SSP8C.mp4
 python -m modules.video.openpose --patient P001 --max-frames 20 --input data/video/rehab24-6/PM_105-Camera18-30fps-transposed.mp4
-python -m scripts.make_mocks --skip i1   # sem --skip i1, os mocks apagam as saídas reais do vídeo
 python -m scripts.material_video --pacote
 streamlit run app/streamlit_app.py
 ```
 
 - **Figura de comparação no pacote:** sem o gabarito, o pacote sai sem a figura da comparação OpenPose × YOLOv8-pose. Para incluí-la, rode antes `python -m data.download_rehab24 --gabarito` e `python -m notebooks.comparacao.openpose_yolo` (cerca de 4 minutos a mais). A figura já está no README.
 - **Cópia direta:** dentro do grupo, o Integrante 1 também pode enviar a própria cópia de `outputs/video/P001/` e `outputs/pacote_video/`. A restrição do Charades é sobre publicar. Gerar pelos comandos garante que todos usem a mesma versão.
-- **Ambiente limpo:** esta sequência ainda não foi testada do zero (pendência do M5 no status do Integrante 1).
 
 Avaliação contra as anotações dos datasets (seção 7.11):
 
@@ -857,9 +724,9 @@ Velocidade medida na máquina de desenvolvimento, só com CPU:
 
 | Medição | Resultado |
 |---|---|
-| YOLOv8n-pose nos vídeos do REHAB24-6 (1080×1920 e 1920×1080) | 68 a 78 quadros por segundo de inferência |
-| Vídeo de fisioterapia de 82 a 130 s, analisado a 15 FPS, com vídeo anotado gravado | 48 a 76 s de processamento |
-| Vídeo do leito (Charades, 30 s, 480×270) | cerca de 4 s |
+| YOLOv8n-pose nos vídeos do REHAB24-6 | 54 a 63 quadros por segundo de inferência nos agachamentos (1080×1920); 78 na abdução (1920×1080) |
+| Vídeo de fisioterapia de 82 a 130 s, analisado a 15 FPS | 24 a 39 s na passada de pose; cerca de 55 a 82 s no total, com clipes, quadros e vídeo anotado gravados |
+| Vídeo do leito (Charades, 30 s, 480×270) | cerca de 5 s na passada de detecção |
 | OpenPose no recorte da pessoa (PM_105) | 0,78 a 0,84 FPS |
 | OpenPose no quadro inteiro (foto 1280×720) | cerca de 5 s por quadro |
 
@@ -886,7 +753,7 @@ Tratamento das séries:
 - **Taxa de análise:** 15 quadros por segundo (`physio.process_fps`).
 - **Lacunas:** buracos de keypoints de até 0,5 s são interpolados linearmente; lacunas maiores ficam vazias.
 - **Suavização:** média móvel centrada de 0,3 s.
-- **Lado do corpo:** escolhido automaticamente pela fração de quadros com o ângulo válido mais a confiança média dos keypoints daquele lado. Pode ser fixado em `primary_angle.side`.
+- **Lado do corpo:** escolhido automaticamente pela fração de quadros com o ângulo válido mais metade da confiança média dos keypoints daquele lado. Pode ser fixado em `primary_angle.side`.
 
 #### Repetições e amplitude
 
@@ -1046,8 +913,8 @@ Cores nos quadros anotados:
 **Série de movimentação (`outputs/video/<paciente>/movement.parquet`).** Uma
 linha por amostra, a ~5 Hz, com as colunas definidas no plano. O plano define
 só os nomes das colunas. As unidades abaixo e o comportamento quando a pessoa
-não é detectada são uma **proposta do Integrante 1, a confirmar com o
-Integrante 3**, que consome a série:
+não é detectada foram definidos pelo Integrante 1 e são os que o módulo do
+Integrante 3 consome:
 
 | Coluna | Tipo | Definição |
 |---|---|---|
@@ -1072,7 +939,7 @@ internação, é composta pelo simulador do Integrante 3 a partir deste arquivo.
 | Leito | detectado pelo YOLOv8 em 87 de 151 quadros; caixa = mediana |
 | Pessoa visível | 100% das amostras |
 | Inclinação do tronco | 83° no início (deitada) → 16° no fim (em pé) |
-| Saída do leito | `in_bed` passa a `false` de forma estável aos **18,0 s**; o Charades anota "levantando-se" de 13,7 a 19,1 s |
+| Saída do leito | `in_bed` passa a `false` aos **18,0 s**; o Charades anota "levantando-se" de 13,7 a 19,1 s |
 | Oscilações | um quadro falso aos 11,8 s; alternância entre 22 e 27 s, quando a pessoa se debruça sobre a cama para arrumar o cobertor |
 | Rótulo para o Integrante 3 | `data/labels/SSP8C.yaml`: saída aos 19,1 s (fim de "levantando-se" na anotação do Charades) → `bed_exit_labels.json`, 10:10:19,1 na demo |
 
@@ -1199,7 +1066,7 @@ como incorretas. Ela também gera falsos positivos, por exemplo 5 no PM_022, em
 repetições corretas de perfil feitas com o tronco a 40°–45°: essa pessoa
 inclina mais o tronco que as outras, mesmo executando corretamente.
 
-**Leito.** Ver o resultado do SSP8C na seção 7.8: a saída estável aos 18,0 s
+**Leito.** Ver o resultado do SSP8C na seção 7.8: a saída aos 18,0 s
 fica dentro do intervalo anotado de "levantando-se" (13,7–19,1 s).
 
 ### 7.12 Exemplos e uso na demonstração do P001
@@ -1263,9 +1130,10 @@ trocadas com `--amplitude-rep` e `--postura-rep`.
 - **Amostra:** 7 vídeos de 7 pessoas (REHAB24-6) e 1 vídeo de leito (Charades), roteirizados e de datasets públicos. As métricas não representam desempenho em ambiente hospitalar real.
 - **Uso:** o sistema sinaliza risco e apoia a equipe; a decisão é clínica.
 
-### 7.14 Próximos passos propostos
+### 7.14 Trabalho futuro
 
-Os dois precisam de decisão do grupo.
+Duas extensões ficaram fora da entrega (seção 10.4), porque mudam o que foi
+acordado no plano:
 
 1. **Amplitude relativa à própria pessoa:** comparar cada repetição com a linha de base das primeiras repetições do mesmo vídeo, como o indicador vocal do Integrante 2 compara cada voz com ela mesma. Reduz o efeito da perspectiva e da variação entre pessoas, mas muda a semântica da regra. Não era exigência do enunciado nem do plano.
 2. **Flexão excessiva como terceiro tipo de evento.** Cobriria o erro mais comum do agachamento no REHAB24-6. Exige acrescentar um `type` à lista acordada no contrato.
@@ -1343,8 +1211,8 @@ usado como fallback silencioso nem substitui saídas reais.
 ### 8.6 Métricas e resultados
 
 Validação em CPython 3.13.18 / Windows x64: **43 testes do I2 passaram**.
-Na suíte completa, **118 passaram e 6 foram pulados** apenas por ausência dos
-pesos YOLOv8/OpenPose.
+Na suíte completa do projeto, com os quatro módulos integrados, **357 testes
+passam** (16/11/2026, seção 11).
 
 O cenário real no Azure gerou 10 Findings de áudio e 5 de texto para a consulta
 principal. As seis consultas foram processadas separadamente e revisadas por uma
@@ -1388,12 +1256,13 @@ Sinais vitais e prescrições são **sintéticos**, gerados pelo simulador
 (`simulator.py`, `config/simulator.yaml`). Cada sinal vital é um valor basal mais
 uma oscilação lenta e um ruído AR(1), e o basal varia de paciente para
 paciente. O catálogo de medicamentos do `config/anomaly.yaml` é didático, não vem
-de bula. Não usei MIMIC-IV Demo nem BIDMC.
+de bula. O módulo não usa MIMIC-IV Demo nem BIDMC.
 
 A movimentação usa o `movement.parquet` real do Integrante 1 (Charades SSP8C).
-Como o clipe tem 30 s, ele é estendido com a série simulada (o paciente deitado
-que se reposiciona de tempos em tempos), e a composição fica registrada em
-`outputs/anomaly/<paciente>/composicao_movimento.json`. Sem `--input`, a
+Como o clipe tem 30 s, a série ganha antes dele um trecho simulado com o
+paciente deitado e parado, sem eventos, desde o início da série até o começo do
+clipe; o clipe entra sem alteração e a série acaba com ele. A composição fica
+registrada em `outputs/anomaly/<paciente>/composicao_movimento.json`. Sem `--input`, a
 movimentação é toda simulada.
 
 O `fluxo.py` reproduz a série em velocidade ajustável, entregando um ponto de
@@ -1428,15 +1297,18 @@ As métricas foram calculadas sobre uma amostra pequena, roteirizada e destinada
 desempenho esperado em ambiente hospitalar real. Como os mesmos dados sintéticos
 geram os eventos e medem a detecção, as regras de prescrição e movimentação
 acertam 100 % por construção. O ponto fraco é a deterioração multivariada (9 de
-16 eventos), e o Isolation Forest tem cerca de 5 % de falso alarme em paciente
-estável, por isso ele é só um complemento.
+16 eventos). O Isolation Forest não gerou falso alarme na avaliação, mas acha só
+7 desses 16 eventos e nenhum evento de um sinal só, por isso ele é só um
+complemento.
 
 No clipe real do leito (Charades SSP8C), o detector marcou a saída do leito aos
 18,0 s do vídeo (10:10:18 na demo). A anotação humana do Charades marca o fim de
-"levantando-se" aos 19,1 s, e o `in_bed` do Integrante 1 fica falso de forma
-estável a partir de 18,0 s. Um quadro falso de `in_bed` aos 11,8 s, com a pessoa
-ainda deitada, é ignorado porque a saída só é confirmada com 3 s seguidos fora do
-leito.
+"levantando-se" aos 19,1 s, e o `in_bed` do Integrante 1 passa a falso aos
+18,0 s. Um quadro falso de `in_bed` aos 11,8 s, com a pessoa ainda deitada, é
+ignorado porque a saída só é confirmada com 3 s seguidos fora do leito. Entre
+22 e 27 s o `in_bed` volta a verdadeiro em trechos curtos, quando a pessoa se
+debruça sobre a cama (seção 7.8); o retorno ao leito só conta depois de 10 s
+seguidos (`retorno_s`), então a saída é mantida.
 
 ![Precisão, recall e F1 por módulo](docs/img/anomalias/metricas_por_modulo.png)
 
@@ -1462,9 +1334,6 @@ python -m modules.anomaly.run --input outputs/video/P001/movement.parquet --pati
 
 Interface Python: `from modules.anomaly.pipeline import analyze`, seguida de
 `analyze(input, patient_id) -> list[Finding]`.
-
-Depois de rodar o módulo real, regenere os outros mocks sem apagar a saída dele:
-`python -m scripts.make_mocks --skip i3`.
 
 ### 9.5 Como rodar
 
@@ -1496,7 +1365,7 @@ python -m pytest
 - `--cenario` no `run` troca o cenário do `config/simulator.yaml` (o padrão é o do paciente em `pacientes:`).
 - Na avaliação, `--processos N` define quantos processos usar, `--out` troca a pasta de saída e `--sem-graficos` pula os gráficos.
 - Pacientes que não estão em `pacientes:` rodam a série estável, sem anomalias.
-- Limiares, catálogo de medicamentos e cenários ficam em `config/anomaly.yaml` e `config/simulator.yaml`, sem precisar mexer no código.
+- Os limiares clínicos e estatísticos, o catálogo de medicamentos e os cenários ficam em `config/anomaly.yaml` e `config/simulator.yaml`. Ficam no código só as faixas de severidade de `dose_fora_da_faixa` e a fração mínima de dose (`prescription.py`) e as faixas de severidade do Isolation Forest (`multivariado.py`).
 
 ## 10. Resultados integrados, limitações e ética (Integrante 4, com todos)
 
@@ -1522,7 +1391,7 @@ ponderada** (seção 6.4): viram um único alerta `ponderado`, em vez de um aler
 por Finding. Como a dose duplicada do I3 é de severidade alta, esse alerta é
 **urgente**. Repetições do mesmo desvio dentro de 30 min são deduplicadas.
 
-Resultado da fusão com o módulo real das anomalias e os mocks das outras
+Resultado da fusão com o módulo real das anomalias e os dados sintéticos de teste das outras
 fontes (`tests/test_integracao_i3.py`; confira as suas saídas com
 `python -m scripts.e2e_p001`):
 
@@ -1555,7 +1424,7 @@ Os **34 Findings viraram 4 alertas**, e só um é crítico, com um único e-mail
 à equipe. As quatro verificações do script passam: seis fontes, arquivos
 válidos, alerta crítico pela regra e controle negativo.
 
-O teste com dados reais revelou dois defeitos que os mocks escondiam, ambos
+O teste com dados reais revelou dois defeitos que os dados sintéticos escondiam, ambos
 corrigidos na fusão:
 1. **Ponderados sem relação eram juntados.** A deduplicação absorvia o grupo
    das 10:45 no das 10:20 só por terem o mesmo nome. Agora um `ponderado` só é
@@ -1598,14 +1467,14 @@ desempenho esperado em ambiente hospitalar real.
 | Vídeo | Contagem de repetições de agachamento (REHAB24-6) | 122 de 128 | seção 7.11 |
 | Vídeo | Sinalização de repetições incorretas no agachamento, limiares calibrados (REHAB24-6) | F1 de perfil 0,55 (antes 0,22); em todas as vistas 0,44 (antes 0,39) | seções 7.6 e 7.11 |
 | Vídeo | Saída do leito (Charades SSP8C) | 18,0 s, dentro do intervalo anotado de 13,7–19,1 s | seção 7.8 |
-| Vídeo | Velocidade do YOLOv8n-pose em CPU | 68 a 78 FPS | seção 7.5 |
+| Vídeo | Velocidade do YOLOv8n-pose em CPU | 54 a 78 FPS | seção 7.5 |
 | Vídeo | OpenPose × YOLOv8-pose contra o gabarito 2D (erro médio) | 46,0 px × 39,7 px; 0,77 × 59,3 FPS | seção 7.7 |
 | Vídeo | Erro do ângulo do joelho × 3D real, de perfil (OpenPose × YOLOv8-pose) | 8,8° × 11,8° | seção 7.7 |
 | Áudio e texto | WER; termos críticos; concordância do indicador | 0,23%; P/R/F1 100% nos 6 termos; 100% em 6/6 gravações | seção 8.6 |
 | Anomalias | Recall e precisão dos vitais (limites + z-score); prescrições; movimentação | 90,0 % e 98,2 %; 100 % e 100 % (regras, por construção em dados sintéticos); saída do leito do SSP8C aos 18,0 s, com a anotação em 19,1 s | seção 9.3 |
 | Integração | Cenário P001: alerta crítico pela regra; controle negativo | 1 alerta crítico na janela; 0 fora dela | seção 10.1 |
 | Integração | Alertas do P001 com as saídas reais dos quatro módulos | 34 Findings → 4 alertas, 1 crítico pela regra e 1 e-mail (sem a fusão seriam 34 alertas e 4 críticos) | seção 10.1 |
-| Integração | Testes automatizados (todos os módulos) | 353 passam; 3 do OpenPose falham só quando a pasta do projeto tem acento (limitação do OpenCV no Windows) | seção 11 |
+| Integração | Testes automatizados (todos os módulos) | 357 passam (16/11/2026, com os pesos baixados) | seção 11 |
 
 ### 10.3 Limitações
 
@@ -1628,8 +1497,8 @@ desempenho esperado em ambiente hospitalar real.
   compara a pessoa com ela mesma, sem validade clínica; depende do Azure para
   transcrição e sentimento (seção 8.6).
 - **Anomalias:** dados sintéticos sem o ruído real de um monitor; deterioração
-  multivariada sutil detectada em só 9 de 16 eventos; Isolation Forest com cerca
-  de 5 % de falso alarme em paciente estável; ausência da pessoa por mais de 3 s
+  multivariada sutil detectada em só 9 de 16 eventos; Isolation Forest com recall
+  baixo, útil só como complemento; ausência da pessoa por mais de 3 s
   conta como saída do leito (seção 9).
 
 **Integração**
@@ -1692,7 +1561,7 @@ python -m pytest
 |---|---|
 | `test_contract.py` | regras do Finding e leitura/escrita do JSONL |
 | `test_patients.py` | `patients.yaml` e alinhamento temporal |
-| `test_mocks_schema.py` | todos os mocks validam, estão nos caminhos do plano, são marcados e determinísticos |
+| `test_p001_sintetico.py` | os dados sintéticos de teste do P001 (`tests/p001_sintetico.py`) validam, seguem os caminhos das saídas reais, são marcados como mock e são determinísticos |
 | `test_p001_smoke.py` | cenário P001: alerta crítico pela regra, controle negativo fora da janela |
 | `test_fusion.py` | combinação ponderada dos scores (pesos, janela, limiares, precedência das regras) e deduplicação com cooldown por paciente e tipo |
 | `test_app_smoke.py` | Streamlit inicia com e sem saídas |
@@ -1702,6 +1571,7 @@ python -m pytest
 | `test_ingest.py` | upload: offset do artefato, chamada ao módulo dono, Findings na fusão, erros sem derrubar a tela, remoção |
 | `test_notify.py` | e-mail do alerta crítico: envio único, contingência `.eml`, falha do SMTP, senha fora dos arquivos |
 | `test_video_*.py` | geometria, regras, pipeline, CLI, OpenPose, leito, métricas e desenho dos rótulos do vídeo |
+| `test_audio.py` | áudio e texto (43 testes, sem rede): validação do WAV, Speech e Language simulados, termos e negação, notas, indicador vocal com Parselmouth em sinais artificiais, cache, métricas e modo mock |
 | `test_comparacao.py` | cálculos da comparação OpenPose × YOLOv8-pose (ângulo 3D, trecho parado, variação, vista) |
 | `test_anomaly_*.py` | configuração, simulador, injeções, z-score, episódios, vitais, Isolation Forest, prescrições, movimentação, pipeline e avaliação |
 
@@ -1742,8 +1612,10 @@ Vale para relatório, vídeo, dashboard e relatórios gerados (plano v5):
   reduzidos e citados na legenda, como as licenças permitem em publicação
   acadêmica. Os vídeos e o pacote para a edição (`outputs/pacote_video/`) não
   vão para o Git.
-- **Áudio:** as consultas simuladas do Integrante 2 ficam em `data/audio/`,
-  conforme o plano.
+- **Áudio:** as consultas simuladas gravadas pelo Integrante 2 (voz da
+  equipe) ficam em `data/audio/` na máquina de quem roda, fora do Git, e
+  circulam só dentro do grupo. O mesmo vale para o cache do Azure, que guarda as
+  transcrições.
 - **E-mails de alerta:** só para endereços da equipe.
 - **Fontes de dados:** só dados públicos, sintéticos ou da equipe.
 

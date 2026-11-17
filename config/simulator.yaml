@@ -153,8 +153,9 @@ cenarios:
         - {tipo: imobilidade, inicio_min: 100, duracao_s: 10800}
 
   # Cenário integrado do P001, alinhado com o vídeo do leito (saída do leito às 10:10:18 na demo):
-  # queda de SpO2 no minuto 8, saída do leito no minuto 10 (só vale quando não há movement.parquet
-  # real) e dipirona em duplicidade no minuto 20. As três cabem na mesma janela de 30 min da fusão.
+  # saída do leito no minuto 10 (só vale quando não há movement.parquet real), dipirona em
+  # duplicidade no minuto 20 e queda de SpO2 no minuto 45, na mesma janela de 30 min da consulta
+  # (10:30) e da nota recente (10:40), como pede a regra crítica da fusão.
   p001_integrado:
     vitais:
       injecoes:
